@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Truegear Control</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #04060f;
+      --bg2:      #080d1a;
+      --bg3:      #0d1525;
+      --border:   #1a2540;
+      --accent:   #00e5ff;
+      --accent2:  #7c3aed;
+      --green:    #00ff88;
+      --red:      #ff3366;
+      --yellow:   #ffcc00;
+      --text:     #c8d8f0;
+      --dim:      #3a4a6a;
+      --font-hd:  'Orbitron', monospace;
+      --font-mono:'Share Tech Mono', monospace;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html, body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font-mono); overflow-x:hidden; }
+
+    /* ── Scanline overlay ── */
+    body::before {
+      content:''; pointer-events:none; position:fixed; inset:0; z-index:9999;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px);
+    }
+
+    /* ── Layout ── */
+    .app { display:flex; flex-direction:column; min-height:100vh; max-width:480px; margin:0 auto; padding:16px; gap:12px; }
+
+    /* ── Header ── */
+    .header { display:flex; align-items:center; justify-content:space-between; padding:12px 0 8px; border-bottom:1px solid var(--border); }
+    .logo { font-family:var(--font-hd); font-size:18px; font-weight:900; letter-spacing:3px; color:var(--accent); text-shadow:0 0 20px var(--accent); }
+    .logo span { color:var(--accent2); }
+    .conn-badge { display:flex; align-items:center; gap:6px; font-size:11px; letter-spacing:1px; }
+    .conn-dot { width:8px; height:8px; border-radius:50%; background:var(--dim); transition:all .4s; }
+    .conn-dot.on  { background:var(--green); box-shadow:0 0 10px var(--green); animation:blink 2s infinite; }
+    .conn-dot.err { background:var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Battery bar ── */
+    .battery-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .batt-card {
+      background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+      padding:8px; text-align:center; transition:border-color .3s;
+    }
+    .batt-card.active { border-color:var(--accent); }
+    .batt-label { font-size:9px; letter-spacing:2px; color:var(--dim); margin-bottom:4px; text-transform:uppercase; }
+    .batt-val { font-family:var(--font-hd); font-size:18px; font-weight:700; color:var(--accent); }
+    .batt-val.low { color:var(--red); }
+    .batt-val.mid { color:var(--yellow); }
+    .batt-bar { height:3px; background:var(--bg3); border-radius:2px; margin-top:4px; overflow:hidden; }
+    .batt-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .5s, background .3s; }
+    .batt-fill.low { background:var(--red); }
+    .batt-fill.mid { background:var(--yellow); }
+
+    /* ── Connect button ── */
+    .connect-area { display:flex; gap:8px; }
+    .btn {
+      flex:1; padding:12px; border:none; border-radius:8px; font-family:var(--font-mono);
+      font-size:13px; letter-spacing:2px; cursor:pointer; transition:all .2s; text-transform:uppercase;
+    }
+    .btn:disabled { opacity:.3; cursor:not-allowed; }
+    .btn:active:not(:disabled) { transform:scale(.97); }
+    .btn-primary { background:linear-gradient(135deg,var(--accent2),#4f46e5); color:white; }
+    .btn-primary:hover:not(:disabled) { box-shadow:0 0 20px rgba(124,58,237,.5); }
+    .btn-danger  { background:transparent; color:var(--red); border:1px solid var(--red); }
+    .btn-danger:hover:not(:disabled) { background:rgba(255,51,102,.1); }
+
+    /* ── Status ── */
+    .status-line { font-size:12px; color:var(--dim); text-align:center; min-height:18px; letter-spacing:1px; transition:color .3s; }
+    .status-line.ok    { color:var(--green); }
+    .status-line.error { color:var(--red); }
+    .status-line.load  { color:var(--yellow); }
+
+    /* ── Tabs ── */
+    .tabs { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:4px; border:1px solid var(--border); }
+    .tab {
+      flex:1; padding:8px; text-align:center; border-radius:7px; font-size:11px;
+      letter-spacing:1px; cursor:pointer; color:var(--dim); transition:all .2s; text-transform:uppercase;
+    }
+    .tab.active { background:var(--bg3); color:var(--accent); border:1px solid var(--border); box-shadow:0 0 10px rgba(0,229,255,.1); }
+
+    /* ── Tab panels ── */
+    .panel { display:none; }
+    .panel.active { display:block; }
+
+    /* ══════════════════════════════════════════
+       BODY MAP
+    ══════════════════════════════════════════ */
+    .bodymap-wrap { position:relative; }
+    .side-toggle { display:flex; gap:6px; margin-bottom:10px; }
+    .side-btn {
+      flex:1; padding:7px; border-radius:6px; font-size:11px; letter-spacing:2px;
+      cursor:pointer; border:1px solid var(--border); background:var(--bg2); color:var(--dim);
+      text-transform:uppercase; transition:all .2s;
+    }
+    .side-btn.active { background:var(--bg3); border-color:var(--accent); color:var(--accent); }
+
+    .body-svg-wrap {
+      display:flex; justify-content:center; align-items:center;
+      background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+      padding:16px; position:relative; user-select:none;
+    }
+
+    .body-svg { width:100%; max-width:280px; touch-action:none; }
+
+    .torso-path { fill:none; stroke:var(--dim); stroke-width:1.5; opacity:.4; }
+
+    .motor-zone {
+      cursor:pointer; transition:all .15s;
+    }
+    .motor-zone circle {
+      fill:var(--bg3); stroke:var(--dim); stroke-width:1;
+      transition:all .15s;
+    }
+    .motor-zone text {
+      fill:var(--dim); font-size:8px; font-family:var(--font-mono);
+      pointer-events:none; text-anchor:middle; dominant-baseline:middle;
+    }
+    .motor-zone.active circle {
+      fill:var(--accent); stroke:var(--accent);
+      filter:drop-shadow(0 0 8px var(--accent));
+    }
+    .motor-zone.active text { fill:var(--bg); }
+    .motor-zone.disabled circle { fill:var(--bg); stroke:var(--bg3); opacity:.3; }
+
+    .body-hint { text-align:center; font-size:10px; color:var(--dim); margin-top:8px; letter-spacing:1px; }
+
+    /* ── Intensity slider ── */
+    .intensity-row { display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .intensity-label { font-size:10px; color:var(--dim); letter-spacing:1px; white-space:nowrap; }
+    input[type=range] {
+      flex:1; -webkit-appearance:none; height:4px; border-radius:2px;
+      background:linear-gradient(to right, var(--accent) var(--val,50%), var(--bg3) var(--val,50%));
+      outline:none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+      background:var(--accent); box-shadow:0 0 8px var(--accent); cursor:pointer;
+    }
+    .intensity-val { font-family:var(--font-hd); font-size:14px; color:var(--accent); min-width:36px; text-align:right; }
+
+    /* ══════════════════════════════════════════
+       PRESETS
+    ══════════════════════════════════════════ */
+    .preset-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px; }
+    .preset-btn {
+      background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+      padding:14px 10px; cursor:pointer; text-align:left; color:var(--text);
+      transition:all .2s; position:relative; overflow:hidden;
+    }
+    .preset-btn::before {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(135deg, rgba(0,229,255,.05), transparent);
+      opacity:0; transition:opacity .2s;
+    }
+    .preset-btn:hover:not(:disabled)::before { opacity:1; }
+    .preset-btn:hover:not(:disabled) { border-color:var(--accent); }
+    .preset-btn:disabled { opacity:.3; cursor:not-allowed; }
+    .preset-btn.firing { border-color:var(--green) !important; background:rgba(0,255,136,.05) !important; }
+    .preset-icon { font-size:20px; margin-bottom:4px; }
+    .preset-name { font-size:13px; font-weight:bold; margin-bottom:2px; }
+    .preset-desc { font-size:10px; color:var(--dim); }
+
+    /* ── File upload ── */
+    .upload-zone {
+      border:1px dashed var(--border); border-radius:10px; padding:20px;
+      text-align:center; cursor:pointer; transition:all .2s; position:relative;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color:var(--accent); background:rgba(0,229,255,.03); }
+    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .upload-icon { font-size:24px; margin-bottom:6px; }
+    .upload-text { font-size:12px; color:var(--dim); letter-spacing:1px; }
+    .upload-hint { font-size:10px; color:var(--dim); margin-top:4px; }
+
+    .loaded-effects { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+    .loaded-effect {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px;
+    }
+    .loaded-effect-name { font-size:12px; color:var(--text); }
+    .loaded-effect-meta { font-size:10px; color:var(--dim); }
+    .btn-send-loaded {
+      padding:5px 12px; border-radius:6px; font-size:11px; letter-spacing:1px;
+      background:var(--accent2); color:white; border:none; cursor:pointer; transition:all .2s;
+    }
+    .btn-send-loaded:hover { background:#6d28d9; }
+    .btn-send-loaded.firing { background:var(--green); color:var(--bg); }
+
+    /* ══════════════════════════════════════════
+       LOG
+    ══════════════════════════════════════════ */
+    .log-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .log-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); }
+    .log-title { font-size:10px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; }
+    .log-clear { font-size:10px; color:var(--dim); cursor:pointer; padding:2px 6px; border-radius:4px; }
+    .log-clear:hover { color:var(--text); }
+    .log-body { max-height:140px; overflow-y:auto; padding:8px 12px; }
+    .log-line { font-size:11px; margin-bottom:2px; line-height:1.5; }
+    .log-line.ok    { color:var(--green); }
+    .log-line.warn  { color:var(--yellow); }
+    .log-line.error { color:var(--red); }
+    .log-line.info  { color:var(--dim); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:var(--bg2); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">TRUE<span>GEAR</span></div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label" style="color:var(--dim)">离线</span>
+    </div>
+  </div>
+
+  <!-- Battery -->
+  <div class="battery-row" id="battery-row" style="display:none">
+    <div class="batt-card" id="batt-vest">
+      <div class="batt-label">背心</div>
+      <div class="batt-val" id="bv-vest">--%</div>
+      <div class="batt-bar"><div class="batt-fill" id="bf-vest" style="width:0%"></div></div>
+    </div>
+    <div class="batt-card" id="batt-left">
+      <div class="batt-label">左手</div>
+      <div class="batt-val" id="bv-left">--%</div>
+      <div class="batt-bar"><div class="batt-fill" id="bf-left" style="width:0%"></div></div>
+    </div>
+    <div class="batt-card" id="batt-right">
+      <div class="batt-label">右手</div>
+      <div class="batt-val" id="bv-right">--%</div>
+      <div class="batt-bar"><div class="batt-fill" id="bf-right" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Connect -->
+  <div class="connect-area">
+    <button class="btn btn-primary" id="btn-connect" onclick="connectBluetooth()">连接体感服</button>
+    <button class="btn btn-danger"  id="btn-disconnect" onclick="disconnectBluetooth()" disabled>断开</button>
+  </div>
+  <div class="status-line" id="status">等待连接...</div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('bodymap')">触控体图</div>
+    <div class="tab"        onclick="switchTab('presets')">特效预设</div>
+    <div class="tab"        onclick="switchTab('files')">特效文件</div>
+  </div>
+
+  <!-- ═══ TAB: BODY MAP ═══ -->
+  <div class="panel active" id="panel-bodymap">
+
+    <div class="side-toggle">
+      <div class="side-btn active" id="side-front" onclick="setSide('front')">前面</div>
+      <div class="side-btn"        id="side-back"  onclick="setSide('back')">背面</div>
+    </div>
+
+    <div class="body-svg-wrap">
+      <svg class="body-svg" viewBox="0 0 280 340" id="body-svg">
+        <!-- Torso outline -->
+        <path class="torso-path" d="
+          M 140,18
+          C 115,18 95,32 90,55
+          L 72,105 C 65,130 60,180 65,230
+          L 70,285 C 74,305 82,318 95,318
+          L 185,318 C 198,318 206,305 210,285
+          L 215,230 C 220,180 215,130 208,105
+          L 190,55 C 185,32 165,18 140,18 Z
+        "/>
+        <!-- Shoulder hints -->
+        <path class="torso-path" d="M 90,55 C 70,50 55,60 50,80 L 48,110" stroke-dasharray="3,4"/>
+        <path class="torso-path" d="M 190,55 C 210,50 225,60 230,80 L 232,110" stroke-dasharray="3,4"/>
+        <!-- Motor zones injected by JS -->
+        <g id="motor-zones"></g>
+      </svg>
+    </div>
+
+    <div class="body-hint">按住振动点触发振动 · 松开停止</div>
+
+    <div class="intensity-row">
+      <span class="intensity-label">强度</span>
+      <input type="range" id="intensity-slider" min="10" max="100" value="70"
+             oninput="updateIntensity(this.value)" style="--val:70%">
+      <span class="intensity-val" id="intensity-val">70</span>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: PRESETS ═══ -->
+  <div class="panel" id="panel-presets">
+    <div class="preset-grid" id="preset-grid">
+      <button class="preset-btn" id="pb-bodydamage"        onclick="sendEffect('BodyDamage')" disabled>
+        <div class="preset-icon">💥</div>
+        <div class="preset-name">受到伤害</div>
+        <div class="preset-desc">振动+电刺激 250ms</div>
+      </button>
+      <button class="preset-btn" id="pb-heartbeat"         onclick="sendEffect('Heartbeat')" disabled>
+        <div class="preset-icon">💓</div>
+        <div class="preset-name">心跳</div>
+        <div class="preset-desc">胸部振动脉冲</div>
+      </button>
+      <button class="preset-btn" id="pb-explosion"         onclick="sendEffect('Explosion')" disabled>
+        <div class="preset-icon">💣</div>
+        <div class="preset-name">爆炸</div>
+        <div class="preset-desc">全身强烈振动</div>
+      </button>
+      <button class="preset-btn" id="pb-lefthandpickupitem" onclick="sendEffect('LeftHandPickupItem')" disabled>
+        <div class="preset-icon">🤚</div>
+        <div class="preset-name">左手拾取</div>
+        <div class="preset-desc">左手轻振+电刺</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: FILES ═══ -->
+  <div class="panel" id="panel-files">
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept=".json,.asset_json" multiple onchange="loadFiles(this.files)">
+      <div class="upload-icon">📂</div>
+      <div class="upload-text">点击或拖拽特效文件</div>
+      <div class="upload-hint">.asset_json · 支持多文件</div>
+    </div>
+    <div class="loaded-effects" id="loaded-effects"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-wrap">
+    <div class="log-header">
+      <span class="log-title">系统日志</span>
+      <span class="log-clear" onclick="clearLog()">清空</span>
+    </div>
+    <div class="log-body" id="log-body"></div>
+  </div>
+
+</div><!-- .app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  TRUEGEAR BINARY PROTOCOL
+// ═══════════════════════════════════════════════════════════
+const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const UART_RX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const UART_TX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+const FD1=[1,1,4,4,1,1,4,4,1,1,4,4,1,1,4,4,1,1,4,4];
+const FD2=[0x8000,0x0400,0x8000,0x0400,0x4000,0x0200,0x4000,0x0200,
+           0x2000,0x0100,0x2000,0x0100,0x1000,0x0080,0x1000,0x0080,0x0800,0x0040,0x0800,0x0040];
+const BD1=[2,2,3,3,2,2,3,3,2,2,3,3,2,2,3,3,2,2,3,3];
+const BD2=[0x8000,0x0400,0x8000,0x0400,0x4000,0x0200,0x4000,0x0200,
+           0x2000,0x0100,0x2000,0x0100,0x1000,0x0080,0x1000,0x0080,0x0800,0x0040,0x0800,0x0040];
+
+const ELEC_PCT = 1.0;
+
+function hi(v){ return (v>>8)&0xFF; }
+function lo(v){ return v&0xFF; }
+function i8(v){ return v&0xFF; }
+
+function motorBitmasks(indices){
+  let b1=0,b2=0,b3=0,b4=0;
+  for(const idx of indices){
+    if(idx<100){ if(FD1[idx]===1)b1|=FD2[idx]; if(FD1[idx]===4)b4|=FD2[idx]; }
+    else{ const i=idx-100; if(BD1[i]===2)b2|=BD2[i]; if(BD1[i]===3)b3|=BD2[i]; }
+  }
+  return [b1,b2,b3,b4];
+}
+
+function buildShakeBytes(track, keep, assetId=0){
+  const bytes=[],bytes2=[]; const im=track.intensity_mode;
+  if(im==='Const')      { bytes.push(keep?3:1, keep?assetId:assetId); }
+  else if(im==='Fade')  { bytes.push(keep?4:2, keep?assetId:assetId); }
+  else if(im==='FadeInAndOut'){ bytes.push(keep?4:2,keep?assetId:assetId); bytes2.push(keep?4:2,keep?assetId:assetId); }
+
+  if(im==='FadeInAndOut'){
+    const mid=Math.floor((track.end_time+track.start_time)/2);
+    bytes.push(hi(track.start_time),lo(track.start_time),hi(mid),lo(mid));
+    bytes2.push(hi(mid),lo(mid),hi(track.end_time),lo(track.end_time));
+  } else {
+    bytes.push(hi(track.start_time),lo(track.start_time),hi(track.end_time),lo(track.end_time));
+  }
+
+  const si=i8(track.start_intensity), ei=i8(track.end_intensity);
+  if(im==='Const')      { bytes.push(si,si); }
+  else if(im==='Fade')  { bytes.push(si,ei); }
+  else if(im==='FadeInAndOut'){ bytes.push(si,ei); bytes2.push(ei,si); }
+
+  const[b1,b2,b3,b4]=motorBitmasks(track.index);
+  bytes.push(hi(b1),lo(b1),hi(b2),lo(b2),hi(b3),lo(b3),hi(b4),lo(b4));
+  bytes2.push(hi(b1),lo(b1),hi(b2),lo(b2),hi(b3),lo(b3),hi(b4),lo(b4));
+  return im==='FadeInAndOut'?bytes.concat(bytes2):bytes;
+}
+
+function buildElectricalBytesOnce(track){
+  const bytes=[0x10,0x00]; bytes.push(hi(track.start_time),lo(track.start_time),0,0,0,0);
+  const si=Math.floor(track.start_intensity*ELEC_PCT); bytes.push(hi(si),lo(si),0,0);
+  let b1=0,b2=0; for(const idx of track.index){if(idx<100)b1=0xF0;else b2=0xF0;}
+  bytes.push(b1,0,b2,0); return bytes;
+}
+
+function buildElectricalBytes(track){
+  const bytes=[],bytes2=[]; const im=track.intensity_mode;
+  if(im==='Const')bytes.push(0x11,0); else if(im==='Fade')bytes.push(0x12,0);
+  else if(im==='FadeInAndOut'){bytes.push(0x12,0);bytes2.push(0x12,0);}
+  if(im==='FadeInAndOut'){
+    const mid=Math.floor((track.end_time+track.start_time)/2);
+    bytes.push(hi(track.start_time),lo(track.start_time),hi(mid),lo(mid));
+    bytes2.push(hi(mid),lo(mid),hi(track.end_time),lo(track.end_time));
+  } else { bytes.push(hi(track.start_time),lo(track.start_time),hi(track.end_time),lo(track.end_time)); }
+  bytes.push(i8(track.interval),0);
+  const si=Math.floor(track.start_intensity*ELEC_PCT), ei=Math.floor(track.end_intensity*ELEC_PCT);
+  if(im==='Const')bytes.push(hi(si),lo(si),hi(si),lo(si));
+  else if(im==='Fade')bytes.push(hi(si),lo(si),hi(ei),lo(ei));
+  else if(im==='FadeInAndOut'){bytes.push(hi(si),lo(si),hi(ei),lo(ei));bytes2.push(hi(ei),lo(ei),hi(si),lo(si));}
+  let b1=0,b2=0; for(const idx of track.index){if(idx<100)b1=0xF0;else b2=0xF0;}
+  bytes.push(b1,0,b2,0); if(im==='FadeInAndOut'){bytes2.push(b1,0,b2,0);return bytes.concat(bytes2);}
+  return bytes;
+}
+
+function buildEffectBinary(effectObj){
+  const keep=effectObj.keep===true||effectObj.keep==='True';
+  let shakeBytes=[],elecBytes=[],shakeCount=0,elecCount=0;
+  for(const track of effectObj.tracks){
+    if(track.action_type==='Stop')break;
+    if(track.action_type==='Shake'){
+      shakeBytes=shakeBytes.concat(buildShakeBytes(track,keep));
+      shakeCount++; if(track.intensity_mode==='FadeInAndOut')shakeCount++;
+    }
+    if(track.action_type==='Electrical'){
+      const tb=track.once?buildElectricalBytesOnce(track):buildElectricalBytes(track);
+      elecBytes=elecBytes.concat(tb); elecCount++;
+      if(track.intensity_mode==='FadeInAndOut')elecCount++;
+    }
+  }
+  const result=[];
+  if(shakeCount>0)result.push(0x68,0x68,shakeCount,...shakeBytes,0x16);
+  if(elecCount>0)result.push(0x68,0x68,elecCount,...elecBytes,0x16);
+  return result;
+}
+
+// Keep effect (hold-to-vibrate)
+function buildKeepPacket(motorIdx, keepId, intensity){
+  const track={
+    intensity_mode:'Const', start_time:0, end_time:10000,
+    start_intensity:intensity, end_intensity:intensity,
+    index:[motorIdx], once:false, interval:0
+  };
+  const sb=buildShakeBytes(track,true,keepId);
+  return [0x68,0x68,1,...sb,0x16];
+}
+
+// Stop keep effect
+function buildStopPacket(keepId){
+  return [0x68,0x68,1, 0x20,keepId, 0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0x16];
+}
+
+const HANDSHAKE=new Uint8Array([
+  0x68,0x68,0x01,0x02,0x00,0x00,0x00,0x01,
+  0xF4,0x00,0x46,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0x16
+]);
+
+// ═══════════════════════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════════════════════
+const EFFECTS={
+  BodyDamage:{name:"BodyDamage",uuid:"BodyDamage",keep:false,priority:0,tracks:[
+    {start_time:0,end_time:250,stop_name:"",start_intensity:70,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[5,6,9,10,13,14]},
+    {start_time:0,end_time:250,stop_name:"",start_intensity:50,end_intensity:5,intensity_mode:"Const",action_type:"Electrical",once:false,interval:20,index:[0,100]}
+  ]},
+  Heartbeat:{name:"Heartbeat",uuid:"Heartbeat",keep:false,priority:0,tracks:[
+    {start_time:0,end_time:150,stop_name:"",start_intensity:60,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[2,3]}
+  ]},
+  Explosion:{name:"Explosion",uuid:"Explosion",keep:false,priority:0,tracks:[
+    {start_time:0,end_time:400,stop_name:"",start_intensity:100,end_intensity:10,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[0,1,2,3,4,5,6,7,8,9,10,11]}
+  ]},
+  LeftHandPickupItem:{name:"LeftHandPickupItem",uuid:"LeftHandPickupItem",keep:false,priority:0,tracks:[
+    {start_time:0,end_time:100,stop_name:"",start_intensity:30,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[0,4]},
+    {start_time:0,end_time:200,stop_name:"",start_intensity:10,end_intensity:5,intensity_mode:"Const",action_type:"Electrical",once:false,interval:10,index:[0,100]}
+  ]}
+};
+
+// ═══════════════════════════════════════════════════════════
+//  BLE
+// ═══════════════════════════════════════════════════════════
+let device=null, rxChar=null, lastSend=0;
+const CHUNK=128, CHUNK_DELAY=30, EFFECT_DELAY=70;
+
+async function sendRaw(data){
+  for(let i=0;i<data.length;i+=CHUNK){
+    const chunk=data.slice(i,i+CHUNK);
+    await rxChar.writeValueWithoutResponse(chunk);
+    if(i+CHUNK<data.length)await delay(CHUNK_DELAY);
+  }
+}
+
+async function connectBluetooth(){
+  if(!navigator.bluetooth){setStatus('❌ 请用 Chrome 或 Edge 打开','error');return;}
+  try{
+    setStatus('正在搜索...','load'); setConnDot('load');
+    clearLog();
+    device=await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'Truegear'}],optionalServices:[UART_SERVICE]
+    });
+    log('找到设备：'+device.name,'ok');
+    setStatus('正在连接...','load');
+    const server=await device.gatt.connect();
+    const svc=await server.getPrimaryService(UART_SERVICE);
+    rxChar=await svc.getCharacteristic(UART_RX);
+    const txChar=await svc.getCharacteristic(UART_TX);
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged',onNotify);
+    await sendRaw(HANDSHAKE);
+    log('握手完成','ok');
+    device.addEventListener('gattserverdisconnected',onDisconnected);
+    setConnected(device.name);
+  }catch(err){
+    setConnDot('');
+    if(err.name==='NotFoundError'){setStatus('未选择设备','');}
+    else{setStatus('连接失败：'+err.message,'error');log('错误：'+err.message,'error');}
+  }
+}
+
+function onNotify(event){
+  const data=new Uint8Array(event.target.value.buffer);
+  const hex=Array.from(data).map(b=>b.toString(16).padStart(2,'0')).join(' ');
+  log('← '+hex,'info');
+  // Battery parse (data length >= 15, data[3] == 0x80 or 0x81)
+  if(data.length>=19&&(data[3]===0x80||data[3]===0x81)){
+    const vest  = convertBatt(getBatt(data[9], data[10]));
+    const left  = convertBatt(getBatt(data[13],data[14]));
+    const right = convertBatt(getBatt(data[17],data[18]));
+    updateBattery(vest,left,right);
+  }
+}
+
+function getBatt(d1,d2){ return (d1&0xFF)*0x100+(d2&0xFF); }
+function convertBatt(v){
+  if(v>3900)return 100; if(v>3700)return 75; if(v>3400)return 50;
+  if(v>3000)return 25;  if(v>2500)return 15; return 0;
+}
+
+function updateBattery(vest,left,right){
+  setBatt('vest',vest); setBatt('left',left); setBatt('right',right);
+  document.getElementById('battery-row').style.display='grid';
+}
+
+function setBatt(id,pct){
+  const val=document.getElementById('bv-'+id);
+  const fill=document.getElementById('bf-'+id);
+  val.textContent=pct+'%';
+  val.className='batt-val'+(pct<=15?' low':pct<=30?' mid':'');
+  fill.style.width=pct+'%';
+  fill.className='batt-fill'+(pct<=15?' low':pct<=30?' mid':'');
+}
+
+function onDisconnected(){
+  rxChar=null; setConnDot(''); setDisconnected();
+  setStatus('已断开连接','error');
+  log('设备已断开','warn');
+  releaseAllMotors();
+}
+
+function disconnectBluetooth(){
+  if(device&&device.gatt.connected)device.gatt.disconnect();
+}
+
+async function sendEffect(name){
+  const effect=EFFECTS[name]; if(!effect)return;
+  await sendEffectObj(effect,name,'pb-'+name.toLowerCase());
+}
+
+async function sendEffectObj(effectObj,label,btnId){
+  if(!rxChar){log('未连接设备','error');return;}
+  const now=Date.now(); const wait=EFFECT_DELAY-(now-lastSend);
+  if(wait>0)await delay(wait); lastSend=Date.now();
+  try{
+    const binary=buildEffectBinary(effectObj);
+    if(binary.length===0){log('特效没有有效轨道','warn');return;}
+    log('→ 发送：'+label+' ('+binary.length+'字节)','ok');
+    await sendRaw(new Uint8Array(binary));
+    if(btnId){
+      const btn=document.getElementById(btnId);
+      if(btn){btn.classList.add('firing');setTimeout(()=>btn.classList.remove('firing'),400);}
+    }
+  }catch(err){log('发送失败：'+err.message,'error');}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BODY MAP – INTERACTIVE TOUCH
+// ═══════════════════════════════════════════════════════════
+let currentSide='front';
+let touchIntensity=70;
+let keepIdCounter=0;
+const activeMotors=new Map(); // motorIdx → keepId
+
+// Motor grid positions in SVG space (5 rows × 4 cols)
+// Front: 0-19, Back: 100-119
+const GRID_X=[100,128,152,180];
+const GRID_Y=[90,135,180,225,270];
+
+function motorPos(localIdx){
+  // localIdx 0-19 for both front and back
+  const row=Math.floor(localIdx/4), col=localIdx%4;
+  return {x:GRID_X[col], y:GRID_Y[row]};
+}
+
+function buildBodyMap(){
+  const g=document.getElementById('motor-zones');
+  g.innerHTML='';
+  const count=20;
+  for(let i=0;i<count;i++){
+    const motorIdx=currentSide==='front'?i:(i+100);
+    const pos=motorPos(i);
+    const zone=document.createElementNS('http://www.w3.org/2000/svg','g');
+    zone.setAttribute('class','motor-zone'+(rxChar?'':' disabled'));
+    zone.setAttribute('id','mz-'+motorIdx);
+    zone.setAttribute('data-motor',motorIdx);
+
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',pos.x); circle.setAttribute('cy',pos.y); circle.setAttribute('r','14');
+
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',pos.x); text.setAttribute('y',pos.y);
+    text.textContent=motorIdx<100?motorIdx:(motorIdx-100);
+
+    zone.appendChild(circle); zone.appendChild(text);
+
+    // Touch / Mouse events
+    zone.addEventListener('mousedown',  e=>{e.preventDefault();startMotor(motorIdx,zone);});
+    zone.addEventListener('touchstart', e=>{e.preventDefault();startMotor(motorIdx,zone);},{passive:false});
+    zone.addEventListener('mouseup',    e=>{e.preventDefault();stopMotor(motorIdx,zone);});
+    zone.addEventListener('touchend',   e=>{e.preventDefault();stopMotor(motorIdx,zone);},{passive:false});
+    zone.addEventListener('mouseleave', e=>{stopMotor(motorIdx,zone);});
+
+    g.appendChild(zone);
+  }
+}
+
+async function startMotor(motorIdx,zone){
+  if(!rxChar||activeMotors.has(motorIdx))return;
+  keepIdCounter=(keepIdCounter%254)+1;
+  const kid=keepIdCounter;
+  activeMotors.set(motorIdx,kid);
+  zone.classList.add('active');
+  try{
+    const pkt=buildKeepPacket(motorIdx,kid,touchIntensity);
+    await sendRaw(new Uint8Array(pkt));
+    log(`▶ 马达 ${motorIdx} 激活 (强度${touchIntensity})`,'ok');
+  }catch(err){log('发送失败：'+err.message,'error');}
+}
+
+async function stopMotor(motorIdx,zone){
+  if(!activeMotors.has(motorIdx))return;
+  const kid=activeMotors.get(motorIdx);
+  activeMotors.delete(motorIdx);
+  zone.classList.remove('active');
+  if(!rxChar)return;
+  try{
+    const pkt=buildStopPacket(kid);
+    await sendRaw(new Uint8Array(pkt));
+    log(`■ 马达 ${motorIdx} 停止`,'info');
+  }catch(err){}
+}
+
+async function releaseAllMotors(){
+  for(const[motorIdx]of activeMotors){
+    const zone=document.getElementById('mz-'+motorIdx);
+    if(zone)zone.classList.remove('active');
+  }
+  activeMotors.clear();
+}
+
+function setSide(side){
+  currentSide=side;
+  document.getElementById('side-front').classList.toggle('active',side==='front');
+  document.getElementById('side-back').classList.toggle('active',side==='back');
+  releaseAllMotors();
+  buildBodyMap();
+}
+
+function updateIntensity(val){
+  touchIntensity=parseInt(val);
+  document.getElementById('intensity-val').textContent=val;
+  document.getElementById('intensity-slider').style.setProperty('--val',val+'%');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FILE UPLOAD
+// ═══════════════════════════════════════════════════════════
+const loadedEffects=[];
+
+function loadFiles(files){
+  for(const file of files){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const json=JSON.parse(e.target.result);
+        if(typeof json.name==='undefined')throw new Error('不是有效的特效文件');
+        if(typeof json.keep==='string')json.keep=json.keep==='True';
+        if(json.tracks)for(const t of json.tracks){if(typeof t.once==='string')t.once=t.once==='True';}
+        loadedEffects.push({name:json.name||file.name, effect:json});
+        renderLoadedEffects();
+        log('已加载特效：'+json.name,'ok');
+      }catch(err){log('文件格式错误：'+file.name,'error');}
+    };
+    reader.readAsText(file);
+  }
+}
+
+function renderLoadedEffects(){
+  const container=document.getElementById('loaded-effects');
+  container.innerHTML='';
+  for(let i=0;i<loadedEffects.length;i++){
+    const{name,effect}=loadedEffects[i];
+    const tracks=effect.tracks?effect.tracks.length:0;
+    const div=document.createElement('div');
+    div.className='loaded-effect';
+    div.innerHTML=`
+      <div>
+        <div class="loaded-effect-name">${name}</div>
+        <div class="loaded-effect-meta">${tracks} 轨道</div>
+      </div>
+      <button class="btn-send-loaded" id="le-${i}" onclick="sendLoadedEffect(${i})" ${rxChar?'':'disabled'}>发送</button>
+    `;
+    container.appendChild(div);
+  }
+}
+
+async function sendLoadedEffect(idx){
+  const{name,effect}=loadedEffects[idx];
+  await sendEffectObj(effect,name,'le-'+idx);
+}
+
+// Drag and drop
+const uz=document.getElementById('upload-zone');
+uz.addEventListener('dragover', e=>{e.preventDefault();uz.classList.add('drag');});
+uz.addEventListener('dragleave',e=>{uz.classList.remove('drag');});
+uz.addEventListener('drop',     e=>{e.preventDefault();uz.classList.remove('drag');loadFiles(e.dataTransfer.files);});
+
+// ═══════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════
+function setStatus(t,type){
+  const el=document.getElementById('status');
+  el.textContent=t; el.className='status-line '+(type==='load'?'load':type);
+}
+
+function setConnDot(state){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-label');
+  dot.className='conn-dot'+(state==='on'?' on':state==='err'?' err':'');
+  lbl.textContent=state==='on'?'已连接':state==='load'?'连接中':'离线';
+  lbl.style.color=state==='on'?'var(--green)':state==='load'?'var(--yellow)':'var(--dim)';
+}
+
+function setConnected(name){
+  setConnDot('on');
+  document.getElementById('btn-connect').disabled=true;
+  document.getElementById('btn-disconnect').disabled=false;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=false);
+  document.querySelectorAll('.btn-send-loaded').forEach(b=>b.disabled=false);
+  buildBodyMap();
+  setStatus('已连接：'+name,'ok');
+}
+
+function setDisconnected(){
+  document.getElementById('btn-connect').disabled=false;
+  document.getElementById('btn-disconnect').disabled=true;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=true);
+  document.querySelectorAll('.btn-send-loaded').forEach(b=>b.disabled=true);
+  document.getElementById('battery-row').style.display='none';
+  buildBodyMap(); // rebuild with disabled state
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['bodymap','presets','files'];
+    t.classList.toggle('active',names[i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+function log(msg,type='info'){
+  const body=document.getElementById('log-body');
+  const line=document.createElement('div');
+  const time=new Date().toLocaleTimeString('zh',{hour12:false});
+  line.className='log-line '+type;
+  line.textContent='['+time+'] '+msg;
+  body.appendChild(line); body.scrollTop=body.scrollHeight;
+}
+
+function clearLog(){ document.getElementById('log-body').innerHTML=''; }
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// Init
+buildBodyMap();
+</script>
+</body>
+</html>
