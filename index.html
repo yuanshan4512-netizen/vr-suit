@@ -1118,10 +1118,40 @@ let isGuest=false;
 function initPeer(){
   if(peer&&!peer.destroyed)return;
   const id='TG-'+Math.random().toString(36).substr(2,6).toUpperCase();
-  peer=new Peer(id,{debug:0});
+  document.getElementById('my-room-code').textContent='生成中...';
+  peer=new Peer(id,{
+    debug:0,
+    config:{
+      iceServers:[
+        {urls:'stun:stun.l.google.com:19302'},
+        {urls:'stun:stun1.l.google.com:19302'},
+        {urls:'stun:global.stun.twilio.com:3478'}
+      ]
+    }
+  });
   peer.on('open',id=>{
     document.getElementById('my-room-code').textContent=id.replace('TG-','');
     log('房间码就绪：'+id.replace('TG-',''),'ok');
+  });
+  peer.on('disconnected',()=>{
+    log('联机服务器断线，正在重连...','warn');
+    document.getElementById('my-room-code').textContent='重连中...';
+    // Try to reconnect to the server (keeps same peer ID)
+    if(peer&&!peer.destroyed){
+      setTimeout(()=>{
+        try{peer.reconnect();}catch(e){
+          // If reconnect fails, destroy and reinit with new ID
+          peer.destroy();
+          peer=null;
+          setTimeout(initPeer,2000);
+        }
+      },1500);
+    }
+  });
+  peer.on('close',()=>{
+    document.getElementById('my-room-code').textContent='······';
+    peer=null;
+    setTimeout(initPeer,3000);
   });
   peer.on('connection',conn=>{
     conn.on('open',()=>{
@@ -1138,13 +1168,31 @@ function initPeer(){
       setRemoteStatus(hostConns.length>0?'已连接 '+hostConns.length+' 位访客':'未连接');
     });
   });
-  peer.on('error',e=>log('联机错误：'+e.message,'error'));
+  peer.on('error',e=>{
+    log('联机错误：'+e.message,'error');
+    // On fatal errors, reinit after delay
+    if(e.type==='server-error'||e.type==='network'||e.type==='socket-error'){
+      document.getElementById('my-room-code').textContent='重试中...';
+      setTimeout(()=>{
+        if(peer){peer.destroy();peer=null;}
+        initPeer();
+      },3000);
+    }
+  });
 }
 
 function connectAsGuest(){
   const code=document.getElementById('guest-code-input').value.trim();
   if(code.length<4){document.getElementById('guest-info').textContent='请输入完整房间码';return;}
-  if(!peer||peer.destroyed)peer=new Peer(undefined,{debug:0});
+  if(!peer||peer.destroyed)peer=new Peer(undefined,{
+    debug:0,
+    config:{
+      iceServers:[
+        {urls:'stun:stun.l.google.com:19302'},
+        {urls:'stun:stun1.l.google.com:19302'}
+      ]
+    }
+  });
   document.getElementById('guest-info').textContent='连接中...';
   document.getElementById('btn-guest-connect').disabled=true;
   const hostId='TG-'+code.toUpperCase();
