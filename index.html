@@ -572,21 +572,24 @@ async function connectDevice(entry){
     await txChar.startNotifications();
     txChar.addEventListener('characteristicvaluechanged',e=>onNotify(e,entry));
     await sendRawTo(entry.rxChar,HANDSHAKE,entry.id);
-    entry.status='connected'; entry.reconnectAttempts=0;
+    entry.status='connected';
+    entry.reconnectAttempts=0;
+    entry.everConnected=true;  // mark that we had a successful connection
     if(!primaryDeviceId)primaryDeviceId=entry.id;
-    // Use {once:true} to prevent duplicate listeners on reconnect
     entry.device.addEventListener('gattserverdisconnected',
       ()=>onDeviceDisconnected(entry),{once:true});
     renderDevices(); updateConnSummary(); enableControls();
     log('✅ 已连接：'+entry.name,'ok');
     setStatus('已连接：'+entry.name,'ok');
-    // Delay canvas init so tab is visible and has correct dimensions
     setTimeout(()=>buildBodyMap(),100);
     renderLoadedEffects(); renderFavorites();
     showShakePanel();
   }catch(err){
-    log('连接失败：'+entry.name+' '+err.message,'error');
-    scheduleReconnect(entry);
+    entry.status='disconnected'; renderDevices();
+    log('连接失败：'+entry.name+' — '+err.message,'error');
+    setStatus('连接失败，请重试','error');
+    // ⚠ Do NOT auto-reconnect on first connection failure
+    // Only scheduleReconnect is called from onDeviceDisconnected (after successful connection)
   }
 }
 
@@ -597,7 +600,10 @@ function onDeviceDisconnected(entry){
   if(getConnectedDevices().length===0){
     setStatus('设备已断开','error'); disableControls(); setTimeout(()=>buildBodyMap(),50);
   }
-  scheduleReconnect(entry);
+  // Only auto-reconnect if we previously had a successful connection
+  if(entry.everConnected){
+    scheduleReconnect(entry);
+  }
 }
 
 function scheduleReconnect(entry){
