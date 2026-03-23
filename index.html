@@ -180,7 +180,7 @@
     .peer-status{font-size:10px;color:var(--green);}
     .remote-info{font-size:11px;color:var(--dim);text-align:center;padding:8px;letter-spacing:1px;}
 
-    /* Liquid shake module */
+    /* Ball sensor module */
     .shake-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;display:none;}
     .shake-panel.show{display:block;}
     .shake-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
@@ -190,11 +190,9 @@
     .toggle-track.on{background:var(--accent2);border-color:var(--accent2);}
     .toggle-thumb{width:14px;height:14px;border-radius:50%;background:white;position:absolute;top:2px;left:2px;transition:left .2s;}
     .toggle-track.on .toggle-thumb{left:18px;}
-    /* Liquid canvas */
-    .liquid-wrap{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px;background:var(--bg3);}
-    #liquid-canvas{display:block;width:100%;height:100px;}
-    .liquid-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-    .liquid-label{font-size:10px;color:rgba(200,216,240,.4);letter-spacing:2px;text-transform:uppercase;}
+    .ball-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px;background:var(--bg3);}
+    #ball-canvas{display:block;width:100%;touch-action:none;}
+    .ball-hint{text-align:center;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px;}
     .shake-settings{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
     .shake-setting{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
     .shake-setting label{font-size:10px;color:var(--dim);letter-spacing:1px;display:block;margin-bottom:4px;text-transform:uppercase;}
@@ -267,16 +265,10 @@
 
   <!-- ═══ BODY MAP ═══ -->
   <div class="panel active" id="panel-bodymap">
-    <div class="side-toggle">
-      <div class="side-btn active" id="side-front" onclick="setSide('front')">前面</div>
-      <div class="side-btn"        id="side-back"  onclick="setSide('back')">背面</div>
+    <div class="ball-wrap">
+      <canvas id="touch-canvas"></canvas>
     </div>
-    <div class="body-svg-wrap">
-    <svg class="body-svg" viewBox="0 0 440 360" id="body-svg">
-        <g id="motor-zones"></g>
-      </svg>
-    </div>
-    <div class="body-hint">按住振动 · 滑动切换</div>
+    <div class="ball-hint">按住振动 · 滑动切换 · 左=前面 右=背面</div>
     <div class="intensity-row">
       <span class="intensity-label">强度</span>
       <input type="range" id="intensity-slider" min="10" max="100" value="70"
@@ -403,39 +395,36 @@
     </div>
   </div>
 
-  <!-- Shake / Liquid panel -->
+  <!-- Ball sensor panel -->
   <div class="shake-panel" id="shake-panel">
     <div class="shake-header">
-      <span class="shake-title">💧 液体感应</span>
+      <span class="shake-title">🔵 滚球感应</span>
       <div class="shake-toggle" onclick="toggleShake()">
         <div class="toggle-track" id="shake-track"><div class="toggle-thumb"></div></div>
         <span style="font-size:10px;color:var(--dim)" id="shake-toggle-label">关闭</span>
       </div>
     </div>
-    <!-- Liquid canvas -->
-    <div class="liquid-wrap">
-      <canvas id="liquid-canvas"></canvas>
-      <div class="liquid-overlay"><span class="liquid-label" id="liquid-label">倾斜手机让液体流动</span></div>
-    </div>
+    <!-- Ball canvas - same size as body map -->
+    <div class="ball-hint" style="margin-bottom:8px;color:var(--dim);font-size:10px;text-align:center;letter-spacing:1px">球在触控体图上滚动 · 切换到「触控体图」标签可看到球</div>
     <div class="shake-settings">
       <div class="shake-setting">
-        <label>液体量</label>
-        <select id="liquid-volume">
-          <option value="0.25">少量（精准）</option>
-          <option value="0.45" selected>适中（推荐）</option>
-          <option value="0.65">大量（宽泛）</option>
+        <label>球的大小</label>
+        <select id="ball-size">
+          <option value="1.2">小（精准）</option>
+          <option value="1.8" selected>中（推荐）</option>
+          <option value="2.5">大（宽泛）</option>
         </select>
       </div>
       <div class="shake-setting">
         <label>振动强度</label>
-        <select id="liquid-intensity">
+        <select id="ball-intensity">
           <option value="30">轻柔</option>
           <option value="60" selected>中等</option>
           <option value="90">强烈</option>
         </select>
       </div>
     </div>
-    <div class="shake-log" id="shake-log">开启后倾斜手机体验液体振动</div>
+    <div class="shake-log" id="shake-log">开启后倾斜手机体验滚球振动</div>
   </div>
 
   <!-- Log -->
@@ -582,14 +571,17 @@ async function connectDevice(entry){
     const txChar=await svc.getCharacteristic(UART_TX);
     await txChar.startNotifications();
     txChar.addEventListener('characteristicvaluechanged',e=>onNotify(e,entry));
-    await sendRawTo(entry.rxChar,HANDSHAKE);
+    await sendRawTo(entry.rxChar,HANDSHAKE,entry.id);
     entry.status='connected'; entry.reconnectAttempts=0;
     if(!primaryDeviceId)primaryDeviceId=entry.id;
-    entry.device.addEventListener('gattserverdisconnected',()=>onDeviceDisconnected(entry));
+    // Use {once:true} to prevent duplicate listeners on reconnect
+    entry.device.addEventListener('gattserverdisconnected',
+      ()=>onDeviceDisconnected(entry),{once:true});
     renderDevices(); updateConnSummary(); enableControls();
     log('✅ 已连接：'+entry.name,'ok');
     setStatus('已连接：'+entry.name,'ok');
-    buildBodyMap();
+    // Delay canvas init so tab is visible and has correct dimensions
+    setTimeout(()=>buildBodyMap(),100);
     renderLoadedEffects(); renderFavorites();
     showShakePanel();
   }catch(err){
@@ -603,19 +595,24 @@ function onDeviceDisconnected(entry){
   log('设备断开：'+entry.name,'warn');
   renderDevices(); updateConnSummary();
   if(getConnectedDevices().length===0){
-    setStatus('设备已断开','error'); disableControls(); buildBodyMap();
+    setStatus('设备已断开','error'); disableControls(); setTimeout(()=>buildBodyMap(),50);
   }
   scheduleReconnect(entry);
 }
 
 function scheduleReconnect(entry){
+  // Don't reconnect if device was manually removed
+  if(!devices.find(d=>d.id===entry.id))return;
   if(entry.reconnectAttempts>=MAX_RECONNECT){
     entry.status='disconnected'; renderDevices();
     log('⚠ 重连失败：'+entry.name,'error'); return;
   }
   entry.reconnectAttempts++;
-  log(`重连 ${entry.name} (${entry.reconnectAttempts}/${MAX_RECONNECT})...`,'warn');
-  entry.reconnectTimer=setTimeout(()=>connectDevice(entry),RECONNECT_DELAY);
+  const wait=RECONNECT_DELAY*entry.reconnectAttempts; // backoff: 2s, 4s, 6s...
+  log(`重连 ${entry.name} (${entry.reconnectAttempts}/${MAX_RECONNECT}) 等待${wait/1000}s...`,'warn');
+  entry.reconnectTimer=setTimeout(()=>{
+    if(devices.find(d=>d.id===entry.id))connectDevice(entry);
+  },wait);
 }
 
 function removeDevice(id){
@@ -631,19 +628,35 @@ function removeDevice(id){
   log('移除设备：'+entry.name,'info');
 }
 
+function getDeviceNicknames(){try{return JSON.parse(localStorage.getItem('tg_nicknames')||'{}');}catch{return{};}}
+function setDeviceNickname(id,name){const n=getDeviceNicknames();n[id]=name;localStorage.setItem('tg_nicknames',JSON.stringify(n));}
+function getDisplayName(entry){const n=getDeviceNicknames();return n[entry.id]||entry.name;}
+
 function renderDevices(){
   const strip=document.getElementById('devices-strip');
   strip.innerHTML='';
   for(const d of devices){
     const chip=document.createElement('div');
     chip.className='device-chip'+(d.status==='connected'?' active':d.status==='reconnecting'?' reconnecting':'');
-    chip.innerHTML=`<div class="dot"></div><span>${d.name}</span><span class="x" onclick="event.stopPropagation();removeDevice('${d.id}')">×</span>`;
-    chip.onclick=()=>{primaryDeviceId=d.id;log('主设备：'+d.name,'ok');};
+    const displayName=getDisplayName(d);
+    chip.innerHTML=`<div class="dot"></div><span id="dn-${d.id}" style="cursor:text" title="双击改名">${displayName}</span><span class="x" onclick="event.stopPropagation();removeDevice('${d.id}')">×</span>`;
+    chip.onclick=()=>{primaryDeviceId=d.id;log('主设备：'+displayName,'ok');};
+    // Double-click to rename
+    chip.querySelector('span[id]').addEventListener('dblclick',e=>{
+      e.stopPropagation();
+      const cur=getDisplayName(d);
+      const newName=prompt('给设备改个名字：',cur);
+      if(newName&&newName.trim()){
+        setDeviceNickname(d.id,newName.trim());
+        renderDevices();
+        log('设备已重命名：'+newName.trim(),'ok');
+      }
+    });
     strip.appendChild(chip);
   }
   const addBtn=document.createElement('button');
-  addBtn.className='add-device-btn'; addBtn.id='btn-add-device';
-  addBtn.textContent='＋ 连接设备'; addBtn.onclick=addDevice;
+  addBtn.className='add-device-btn';addBtn.id='btn-add-device';
+  addBtn.textContent='＋ 连接设备';addBtn.onclick=addDevice;
   strip.appendChild(addBtn);
 }
 
@@ -675,19 +688,44 @@ function setBatt(id,pct){
   fill.style.width=pct+'%'; fill.className='batt-fill'+(pct<=15?' low':pct<=30?' mid':'');
 }
 
-async function sendRawTo(rxChar,data){
-  for(let i=0;i<data.length;i+=128){
-    const chunk=data.slice(i,i+128);
-    await rxChar.writeValueWithoutResponse(chunk);
-    if(i+128<data.length)await delay(30);
+// Per-device write queue to prevent "GATT operation already in progress"
+const writeQueues=new Map(); // deviceId → {queue:[], running:false}
+
+async function sendRawTo(rxChar,data,deviceId){
+  if(!writeQueues.has(deviceId))writeQueues.set(deviceId,{queue:[],running:false});
+  const q=writeQueues.get(deviceId);
+  return new Promise((resolve,reject)=>{
+    q.queue.push({rxChar,data,resolve,reject});
+    if(!q.running)drainQueue(deviceId);
+  });
+}
+
+async function drainQueue(deviceId){
+  const q=writeQueues.get(deviceId);
+  if(!q||q.running)return;
+  q.running=true;
+  while(q.queue.length>0){
+    // Drop stale motor bursts (keep only latest if queue backed up)
+    if(q.queue.length>3)q.queue.splice(0,q.queue.length-1);
+    const{rxChar,data,resolve,reject}=q.queue.shift();
+    try{
+      for(let i=0;i<data.length;i+=128){
+        const chunk=data.slice(i,i+128);
+        await rxChar.writeValueWithoutResponse(chunk);
+        if(i+128<data.length)await delay(20);
+      }
+      resolve();
+    }catch(e){reject(e);}
   }
+  q.running=false;
 }
 
 async function sendToAll(binary){
   const connected=getConnectedDevices();
   if(connected.length===0){log('无已连接设备','error');return;}
   const u8=new Uint8Array(binary);
-  await Promise.all(connected.map(d=>sendRawTo(d.rxChar,u8).catch(e=>log('发送失败['+d.name+']:'+e.message,'error'))));
+  await Promise.all(connected.map(d=>
+    sendRawTo(d.rxChar,u8,d.id).catch(e=>{})));
 }
 
 let lastSend=0;
@@ -745,105 +783,190 @@ function stopHeartbeat(){if(!heartbeatTimer)return;clearInterval(heartbeatTimer)
 // ═══════════════════════════════════════════════════════
 //  BODY MAP
 // ═══════════════════════════════════════════════════════
-let currentSide='front', touchIntensity=70;
+// ── Touch canvas body map (same grid as ball sensor) ────────
+let touchIntensity=70;
 const activeMotors=new Map();
-const SQ=58; // square size
-const GAP=16; // gap between squares
-const GRID_X=[80,154,228,302]; // centered in 440px viewBox
-const GRID_Y=[3,77,151,225,299]; // centered in 360px viewBox
+const flashSet=new Set();
 
-function motorPos(i){const row=Math.floor(i/4),col=i%4;return{x:GRID_X[col],y:GRID_Y[row]};}
+function initTouchCanvas(){
+  const cv=document.getElementById('touch-canvas');
+  if(!cv)return;
+  cv.width=BALL_CW; cv.height=BALL_CH;
+  cv.style.width='100%'; cv.style.height='auto';
+  // Only attach events once
+  if(!cv._eventsAttached){cv._eventsAttached=true;attachTouchEvents(cv);}
+  drawTouchGrid();
+}
 
-function buildBodyMap(){
-  const g=document.getElementById('motor-zones'); g.innerHTML='';
+function drawTouchGrid(){
+  const cv=document.getElementById('touch-canvas');
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,BALL_CW,BALL_CH);
   const connected=getConnectedDevices().length>0||isGuest;
-  for(let i=0;i<20;i++){
-    const mIdx=currentSide==='front'?i:(i+100);
-    const pos=motorPos(i);
-    const zone=document.createElementNS('http://www.w3.org/2000/svg','g');
-    zone.setAttribute('class','motor-zone'+(connected?'':' disabled'));
-    zone.setAttribute('id','mz-'+mIdx);
-    const c=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    c.setAttribute('x',pos.x);c.setAttribute('y',pos.y);
-    c.setAttribute('width',SQ);c.setAttribute('height',SQ);
-    c.setAttribute('rx','8');
-    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x',pos.x+SQ/2);t.setAttribute('y',pos.y+SQ/2);
-    t.textContent=mIdx<100?mIdx:(mIdx-100);
-    zone.appendChild(c);zone.appendChild(t);
-    zone.addEventListener('mousedown', e=>{e.preventDefault();startMotor(mIdx,zone);});
-    zone.addEventListener('touchstart',e=>{e.preventDefault();startMotor(mIdx,zone);},{passive:false});
-    zone.addEventListener('mouseup',   e=>{e.preventDefault();stopMotor(mIdx,zone);});
-    zone.addEventListener('touchend',  e=>{e.preventDefault();stopAllMotors();},{passive:false});
-    zone.addEventListener('mouseleave',e=>{stopMotor(mIdx,zone);});
-    g.appendChild(zone);
+
+  for(let row=0;row<BALL_ROWS;row++){
+    for(let col=0;col<BALL_COLS;col++){
+      const mx=BALL_GRID_X[col],my=BALL_GRID_Y[row];
+      const cx=mx+BALL_SQ/2,cy=my+BALL_SQ/2;
+      const mIdx=col<4?row*4+col:100+row*4+(col-4);
+      const isActive=activeMotors.has(mIdx);
+      const isFlash=flashSet.has(mIdx);
+      const isFront=col<4;
+
+      rr(ctx,mx,my,BALL_SQ,BALL_SQ,8);
+      if(!connected){
+        ctx.fillStyle='rgba(8,13,26,0.7)';
+      } else if(isActive){
+        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,BALL_SQ*0.8);
+        g.addColorStop(0,isFront?'rgba(0,229,255,0.95)':'rgba(0,255,136,0.95)');
+        g.addColorStop(1,isFront?'rgba(0,140,220,0.55)':'rgba(0,170,85,0.55)');
+        ctx.fillStyle=g;
+      } else if(isFlash){
+        ctx.fillStyle=isFront?'rgba(255,200,0,0.7)':'rgba(255,200,0,0.7)';
+      } else {
+        ctx.fillStyle='rgba(13,21,37,0.85)';
+      }
+      ctx.fill();
+
+      rr(ctx,mx,my,BALL_SQ,BALL_SQ,8);
+      ctx.strokeStyle=isActive?(isFront?'rgba(0,229,255,0.9)':'rgba(0,255,136,0.9)')
+        :isFlash?'rgba(255,200,0,0.8)'
+        :(connected?'rgba(26,37,64,0.8)':'rgba(20,28,48,0.5)');
+      ctx.lineWidth=isActive?1.5:1;
+      ctx.stroke();
+
+      ctx.fillStyle=isActive?'rgba(4,6,15,0.9)':connected?'rgba(58,74,106,0.9)':'rgba(30,40,60,0.5)';
+      ctx.font=`${BALL_SQ*0.26}px "Share Tech Mono",monospace`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(mIdx<100?mIdx:(mIdx-100),cx,cy);
+    }
   }
+
+  // Divider
+  const divX=BALL_GRID_X[4]-BALL_GAP/2;
+  ctx.strokeStyle='rgba(58,74,106,0.8)'; ctx.lineWidth=1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.moveTo(divX,BALL_GRID_Y[0]-4);
+  ctx.lineTo(divX,BALL_GRID_Y[BALL_ROWS-1]+BALL_SQ+4);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Labels
+  ctx.font='11px "Share Tech Mono",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillStyle='rgba(0,229,255,0.55)';
+  ctx.fillText('前面',BALL_GRID_X[0]+(BALL_GRID_X[3]+BALL_SQ-BALL_GRID_X[0])/2,0);
+  ctx.fillStyle='rgba(0,255,136,0.55)';
+  ctx.fillText('背面',BALL_GRID_X[4]+(BALL_GRID_X[7]+BALL_SQ-BALL_GRID_X[4])/2,0);
+}
+
+function canvasHitMotor(px,py){
+  // px,py in canvas logical coords
+  for(let row=0;row<BALL_ROWS;row++){
+    for(let col=0;col<BALL_COLS;col++){
+      const mx=BALL_GRID_X[col],my=BALL_GRID_Y[row];
+      if(px>=mx&&px<=mx+BALL_SQ&&py>=my&&py<=my+BALL_SQ)
+        return col<4?row*4+col:100+row*4+(col-4);
+    }
+  }
+  return null;
+}
+
+function clientToCanvas(cv,clientX,clientY){
+  const rect=cv.getBoundingClientRect();
+  const scaleX=BALL_CW/rect.width;
+  const scaleY=BALL_CH/rect.height;
+  return{x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY};
+}
+
+function attachTouchEvents(cv){
+  cv.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    const{x,y}=clientToCanvas(cv,e.clientX,e.clientY);
+    const mIdx=canvasHitMotor(x,y);
+    if(mIdx!==null)startTouchMotor(mIdx);
+  });
+  cv.addEventListener('mouseup',  e=>{stopAllMotors();drawTouchGrid();});
+  cv.addEventListener('mouseleave',e=>{stopAllMotors();drawTouchGrid();});
+  cv.addEventListener('mousemove',e=>{
+    if(!(e.buttons&1))return;
+    const{x,y}=clientToCanvas(cv,e.clientX,e.clientY);
+    const mIdx=canvasHitMotor(x,y);
+    if(mIdx===null)return;
+    for(const[idx,id]of activeMotors){if(idx!==mIdx){clearInterval(id);activeMotors.delete(idx);}}
+    if(!activeMotors.has(mIdx))startTouchMotor(mIdx);
+    drawTouchGrid();
+  });
+  cv.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){
+      const{x,y}=clientToCanvas(cv,t.clientX,t.clientY);
+      const mIdx=canvasHitMotor(x,y);
+      if(mIdx!==null)startTouchMotor(mIdx);
+    }
+  },{passive:false});
+  cv.addEventListener('touchend',e=>{
+    e.preventDefault();
+    stopAllMotors(); drawTouchGrid();
+  },{passive:false});
+  cv.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const touch=e.touches[0];
+    const{x,y}=clientToCanvas(cv,touch.clientX,touch.clientY);
+    const mIdx=canvasHitMotor(x,y);
+    if(mIdx===null)return;
+    for(const[idx,id]of activeMotors){if(idx!==mIdx){clearInterval(id);activeMotors.delete(idx);}}
+    if(!activeMotors.has(mIdx))startTouchMotor(mIdx);
+    drawTouchGrid();
+  },{passive:false});
+}
+
+function startTouchMotor(mIdx){
+  if((!getConnectedDevices().length&&!isGuest)||activeMotors.has(mIdx))return;
+  fireBurst(mIdx);
+  const id=setInterval(()=>fireBurst(mIdx),150);
+  activeMotors.set(mIdx,id);
+  drawTouchGrid();
+}
+
+function stopAllMotors(){
+  for(const[,id]of activeMotors)clearInterval(id);
+  activeMotors.clear();
+}
+
+async function fireBurst(mIdx){
+  if(isGuest&&guestConn&&guestConn.open){
+    guestConn.send({type:'motor',binary:Array.from(new Uint8Array(buildMotorPacket(mIdx,touchIntensity))),label:'马达'+mIdx});
+    return;
+  }
+  if(!getConnectedDevices().length)return;
+  try{await sendToAll(Array.from(buildMotorPacket(mIdx,touchIntensity)));}catch(e){}
 }
 
 async function sendEffectObj(effObj,label,btnId){
   return sendEffectObjWithRemote(effObj,label,btnId);
 }
 
-async function fireBurst(mIdx){
-  if(isGuest&&guestConn&&guestConn.open){
-    const pkt=buildMotorPacket(mIdx,touchIntensity);
-    guestConn.send({type:'motor',binary:Array.from(new Uint8Array(pkt)),label:'马达'+mIdx});
-    return;
-  }
-  const connected=getConnectedDevices();
-  if(!connected.length)return;
-  try{const pkt=new Uint8Array(buildMotorPacket(mIdx,touchIntensity));await sendToAll(Array.from(pkt));}catch(e){}
-}
-
-function startMotor(mIdx,zone){
-  if((!getConnectedDevices().length&&!isGuest)||activeMotors.has(mIdx))return;
-  zone.classList.add('active');
-  fireBurst(mIdx);
-  activeMotors.set(mIdx,setInterval(()=>fireBurst(mIdx),150));
-}
-function stopMotor(mIdx,zone){
-  if(!activeMotors.has(mIdx))return;
-  clearInterval(activeMotors.get(mIdx));activeMotors.delete(mIdx);zone.classList.remove('active');
-}
-function stopAllMotors(){for(const[i,id]of activeMotors){clearInterval(id);const z=document.getElementById('mz-'+i);if(z)z.classList.remove('active');}activeMotors.clear();}
-
-document.getElementById('body-svg').addEventListener('touchmove',e=>{
-  e.preventDefault();
-  const touch=e.touches[0];
-  const el=document.elementFromPoint(touch.clientX,touch.clientY);
-  if(!el)return;
-  const zone=el.closest('.motor-zone');
-  if(!zone)return;
-  const mIdx=parseInt(zone.id.replace('mz-',''));
-  if(isNaN(mIdx))return;
-  for(const[idx,id]of activeMotors){if(idx!==mIdx){clearInterval(id);activeMotors.delete(idx);const z=document.getElementById('mz-'+idx);if(z)z.classList.remove('active');}}
-  if(!activeMotors.has(mIdx))startMotor(mIdx,zone);
-},{passive:false});
-
-function setSide(s){
-  currentSide=s;
-  document.getElementById('side-front').classList.toggle('active',s==='front');
-  document.getElementById('side-back').classList.toggle('active',s==='back');
-  stopAllMotors(); buildBodyMap();
-}
 function updateIntensity(v){
   touchIntensity=parseInt(v);
   document.getElementById('intensity-val').textContent=v;
   document.getElementById('intensity-slider').style.setProperty('--val',v+'%');
 }
 
-// Flash motor zones for visualization
+// Flash motors for preset visualization
 function flashMotors(indices){
   for(const idx of indices){
-    let mIdx;
-    if(currentSide==='front'&&idx<100)mIdx=idx;
-    else if(currentSide==='back'&&idx>=100)mIdx=idx;
-    else continue;
-    const zone=document.getElementById('mz-'+mIdx);
-    if(!zone||activeMotors.has(mIdx))continue;
-    zone.classList.add('flash');
-    setTimeout(()=>zone.classList.remove('flash'),350);
+    if(flashSet.has(idx))continue;
+    flashSet.add(idx);
+    drawTouchGrid();
+    setTimeout(()=>{flashSet.delete(idx);drawTouchGrid();},350);
   }
+}
+
+// Called when connection state changes
+function buildBodyMap(){
+  initTouchCanvas();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1186,45 +1309,32 @@ function setRemoteStatus(txt){
   el.className='remote-status'+(txt.includes('已连接')?' linked':'');
 }
 
+
 // ═══════════════════════════════════════════════════════
-//  LIQUID GRAVITY SIMULATION
+//  BALL SENSOR (滚球感应) — reuses touch grid exactly
 // ═══════════════════════════════════════════════════════
 let shakeEnabled=false;
 let orientationListener=null;
-let liquidAnimFrame=null;
+let ballAnimFrame=null;
 
-// Physics state
-const liquid={
-  x:0.5,  // water center X (0-1)
-  y:0.5,  // water center Y (0-1)
-  vx:0,   // velocity X
-  vy:0,   // velocity Y
-  gx:0,   // gravity X (from tilt)
-  gy:0,   // gravity Y (from tilt)
-};
+const ball={x:0.5,y:0.5,vx:0,vy:0,gx:0,gy:0};
 
-// Motor grid layout for liquid mapping
-// Front: 20 motors in 4 cols × 5 rows
-// motorIndex = row*4 + col → maps to liquid position
-const MOTOR_COLS=4, MOTOR_ROWS=5;
-
-// Track which motors are currently active via liquid
-const liquidActiveMotors=new Set();
-let liquidLastSend=0;
+// Mirror mapping for back side: canvas col 4→motor 3, 5→2, 6→1, 7→0
+// so the body feels continuous front-to-back
+function motorIndexFromCell(col,row){
+  if(col<4) return row*4+col;                  // front: 0-19
+  else      return 100+row*4+(7-col);           // back mirrored: 100-119
+}
 
 function toggleShake(){
   if(!shakeEnabled){
-    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-      DeviceOrientationEvent.requestPermission().then(s=>{
-        if(s==='granted')enableShake();
-        else{log('方向权限被拒绝','error');}
-      }).catch(e=>log('权限失败：'+e.message,'error'));
-    } else {
-      enableShake();
-    }
-  } else {
-    disableShake();
-  }
+    if(typeof DeviceOrientationEvent!=='undefined'&&
+       typeof DeviceOrientationEvent.requestPermission==='function'){
+      DeviceOrientationEvent.requestPermission()
+        .then(s=>{if(s==='granted')enableShake();else log('方向权限被拒绝','error');})
+        .catch(e=>log('权限失败：'+e.message,'error'));
+    } else enableShake();
+  } else disableShake();
 }
 
 function enableShake(){
@@ -1232,13 +1342,17 @@ function enableShake(){
   document.getElementById('shake-track').classList.add('on');
   document.getElementById('shake-toggle-label').textContent='开启';
   document.getElementById('shake-toggle-label').style.color='var(--green)';
-  document.getElementById('liquid-label').style.display='none';
-
-  orientationListener=e=>onOrientation(e);
+  orientationListener=e=>{
+    const gamma=e.gamma||0;
+    const beta=(e.beta||0)-45;
+    ball.gx=Math.max(-1,Math.min(1,gamma/40));
+    ball.gy=Math.max(-1,Math.min(1,beta/55));
+  };
   window.addEventListener('deviceorientation',orientationListener);
-
-  startLiquidLoop();
-  log('💧 液体感应已开启','ok');
+  // Reset ball to center
+  ball.x=0.5;ball.y=0.5;ball.vx=0;ball.vy=0;
+  startBallLoop();
+  log('🔵 滚球感应已开启','ok');
 }
 
 function disableShake(){
@@ -1246,207 +1360,142 @@ function disableShake(){
   document.getElementById('shake-track').classList.remove('on');
   document.getElementById('shake-toggle-label').textContent='关闭';
   document.getElementById('shake-toggle-label').style.color='var(--dim)';
-  document.getElementById('liquid-label').style.display='';
   if(orientationListener)window.removeEventListener('deviceorientation',orientationListener);
-  if(liquidAnimFrame)cancelAnimationFrame(liquidAnimFrame);
-  // Stop all liquid motors
-  stopAllLiquidMotors();
-  // Clear canvas
-  const cv=document.getElementById('liquid-canvas');
-  const ctx=cv.getContext('2d');
-  ctx.clearRect(0,0,cv.width,cv.height);
+  if(ballAnimFrame){cancelAnimationFrame(ballAnimFrame);ballAnimFrame=null;}
+  // Stop all motors triggered by ball
+  stopAllMotors();
+  // Redraw grid without ball
+  drawTouchGrid();
+  document.getElementById('shake-log').textContent='开启后倾斜手机体验滚球振动';
+  document.getElementById('shake-log').className='shake-log';
 }
 
-function onOrientation(e){
-  // gamma = left/right tilt (-90 to 90)
-  // beta  = front/back tilt (-180 to 180)
-  const gamma=e.gamma||0;  // X gravity
-  const beta =(e.beta ||0)-45; // Y gravity (subtract resting angle)
-  // Normalize to -1..1
-  liquid.gx=Math.max(-1,Math.min(1, gamma/45));
-  liquid.gy=Math.max(-1,Math.min(1, beta /60));
+function getBallRadius(){
+  const sz=parseFloat(document.getElementById('ball-size').value)||1.8;
+  return BALL_SQ*sz*0.36;
 }
 
-function startLiquidLoop(){
-  const cv=document.getElementById('liquid-canvas');
-  // Set actual pixel size
-  cv.width=cv.offsetWidth||cv.parentElement.offsetWidth||320;
-  cv.height=100;
-
+function startBallLoop(){
+  if(ballAnimFrame)cancelAnimationFrame(ballAnimFrame);
   function loop(){
-    if(!shakeEnabled)return;
-    updateLiquidPhysics();
-    drawLiquid();
-    updateLiquidMotors();
-    liquidAnimFrame=requestAnimationFrame(loop);
+    if(!shakeEnabled){ballAnimFrame=null;return;}
+    // Physics
+    ball.vx+=ball.gx*0.016; ball.vy+=ball.gy*0.016;
+    ball.vx*=0.90;           ball.vy*=0.90;
+    ball.x+=ball.vx;         ball.y+=ball.vy;
+    const br=getBallRadius();
+    const bxMin=br/BALL_CW, bxMax=1-br/BALL_CW;
+    const byMin=br/BALL_CH, byMax=1-br/BALL_CH;
+    if(ball.x<bxMin){ball.x=bxMin;ball.vx*=-0.6;}
+    if(ball.x>bxMax){ball.x=bxMax;ball.vx*=-0.6;}
+    if(ball.y<byMin){ball.y=byMin;ball.vy*=-0.6;}
+    if(ball.y>byMax){ball.y=byMax;ball.vy*=-0.6;}
+
+    // Find which motor cell the ball center is over
+    const bxPx=ball.x*BALL_CW, byPx=ball.y*BALL_CH;
+    const br2=getBallRadius()+BALL_SQ*0.15; // slight extra reach
+    const newActive=new Set();
+    for(let row=0;row<BALL_ROWS;row++){
+      for(let col=0;col<BALL_COLS;col++){
+        const cx=BALL_GRID_X[col]+BALL_SQ/2;
+        const cy=BALL_GRID_Y[row]+BALL_SQ/2;
+        if(Math.sqrt((bxPx-cx)**2+(byPx-cy)**2)<=br2)
+          newActive.add(motorIndexFromCell(col,row));
+      }
+    }
+
+    // Stop motors ball has left
+    for(const[mIdx,id]of activeMotors){
+      if(!newActive.has(mIdx)){clearInterval(id);activeMotors.delete(mIdx);}
+    }
+    // Start motors ball just entered
+    for(const mIdx of newActive){
+      if(!activeMotors.has(mIdx)){
+        const intensity=parseInt(document.getElementById('ball-intensity').value)||60;
+        const id=setInterval(()=>fireBurstAt(mIdx,intensity),150);
+        activeMotors.set(mIdx,id);
+        fireBurstAt(mIdx,intensity); // immediate first burst
+      }
+    }
+
+    // Draw grid + ball overlay
+    drawTouchGrid();
+    drawBallOverlay(bxPx,byPx,getBallRadius());
+
+    // Update log
+    const sl=document.getElementById('shake-log');
+    if(newActive.size>0){
+      const f=[...newActive].filter(m=>m<100).length;
+      const b=[...newActive].filter(m=>m>=100).length;
+      sl.textContent=`🔵 前${f}后${b}个马达振动`;
+      sl.className='shake-log triggered';
+    } else {
+      sl.textContent='倾斜手机滚动小球...';
+      sl.className='shake-log';
+    }
+
+    ballAnimFrame=requestAnimationFrame(loop);
   }
   loop();
 }
 
-function updateLiquidPhysics(){
-  const friction=0.88, gravity=0.018;
-  // Apply gravity from tilt
-  liquid.vx+=liquid.gx*gravity;
-  liquid.vy+=liquid.gy*gravity;
-  // Friction
-  liquid.vx*=friction;
-  liquid.vy*=friction;
-  // Move center
-  liquid.x+=liquid.vx;
-  liquid.y+=liquid.vy;
-  // Bounce off walls (water stays in container)
-  const vol=parseFloat(document.getElementById('liquid-volume').value)||0.45;
-  const halfW=vol*0.6, halfH=vol*0.5;
-  if(liquid.x<halfW){ liquid.x=halfW; liquid.vx*=-0.5; }
-  if(liquid.x>1-halfW){ liquid.x=1-halfW; liquid.vx*=-0.5; }
-  if(liquid.y<halfH){ liquid.y=halfH; liquid.vy*=-0.5; }
-  if(liquid.y>1-halfH){ liquid.y=1-halfH; liquid.vy*=-0.5; }
+// Separate intensity-aware burst (ball uses its own intensity setting)
+async function fireBurstAt(mIdx,intensity){
+  const pkt=buildMotorPacket(mIdx,intensity);
+  if(isGuest&&guestConn&&guestConn.open){
+    guestConn.send({type:'motor',binary:Array.from(new Uint8Array(pkt)),label:'球'+mIdx});
+    return;
+  }
+  try{await sendToAll(Array.from(pkt));}catch(e){}
 }
 
-function drawLiquid(){
-  const cv=document.getElementById('liquid-canvas');
+// Draw ball on top of the touch grid canvas
+function drawBallOverlay(bxPx,byPx,br){
+  const cv=document.getElementById('ball-canvas')||document.getElementById('touch-canvas');
+  if(!cv)return;
   const ctx=cv.getContext('2d');
-  const W=cv.width, H=cv.height;
-  ctx.clearRect(0,0,W,H);
-
-  const vol=parseFloat(document.getElementById('liquid-volume').value)||0.45;
-  const rw=vol*W*0.9, rh=vol*H*1.5;
-  const cx=liquid.x*W, cy=liquid.y*H;
 
   // Outer glow
-  const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,rw);
-  glow.addColorStop(0,'rgba(0,229,255,0.25)');
-  glow.addColorStop(0.6,'rgba(124,58,237,0.12)');
-  glow.addColorStop(1,'rgba(0,229,255,0)');
-  ctx.fillStyle=glow;
-  ctx.beginPath();
-  ctx.ellipse(cx,cy,rw*1.3,rh*0.9,0,0,Math.PI*2);
-  ctx.fill();
+  const glowG=ctx.createRadialGradient(bxPx,byPx,0,bxPx,byPx,br*2.8);
+  glowG.addColorStop(0,'rgba(180,120,255,0.2)');
+  glowG.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glowG;
+  ctx.beginPath();ctx.arc(bxPx,byPx,br*2.8,0,Math.PI*2);ctx.fill();
 
-  // Main liquid blob
-  const grad=ctx.createRadialGradient(cx-rw*0.2,cy-rh*0.2,0,cx,cy,rw);
-  grad.addColorStop(0,'rgba(0,229,255,0.9)');
-  grad.addColorStop(0.4,'rgba(0,180,255,0.7)');
-  grad.addColorStop(0.8,'rgba(124,58,237,0.5)');
-  grad.addColorStop(1,'rgba(124,58,237,0.0)');
-  ctx.fillStyle=grad;
-  ctx.beginPath();
-  // Slightly wobbly ellipse using bezier
-  const wobX=rw*(1+Math.sin(Date.now()/400)*0.08);
-  const wobY=rh*(1+Math.cos(Date.now()/500)*0.08);
-  ctx.ellipse(cx,cy,wobX,wobY,liquid.vx*2,0,Math.PI*2);
-  ctx.fill();
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.22)';
+  ctx.beginPath();ctx.ellipse(bxPx+br*0.1,byPx+br*0.2,br*0.8,br*0.3,0,0,Math.PI*2);ctx.fill();
 
-  // Specular highlight
-  ctx.fillStyle='rgba(255,255,255,0.35)';
-  ctx.beginPath();
-  ctx.ellipse(cx-rw*0.25,cy-rh*0.3,rw*0.22,rh*0.18,0,0,Math.PI*2);
-  ctx.fill();
+  // Ball body
+  const bg=ctx.createRadialGradient(bxPx-br*0.3,byPx-br*0.3,0,bxPx,byPx,br);
+  bg.addColorStop(0,'rgba(255,255,255,0.95)');
+  bg.addColorStop(0.3,'rgba(200,160,255,0.9)');
+  bg.addColorStop(0.7,'rgba(124,58,237,0.88)');
+  bg.addColorStop(1,'rgba(70,15,160,0.92)');
+  ctx.fillStyle=bg;
+  ctx.beginPath();ctx.arc(bxPx,byPx,br,0,Math.PI*2);ctx.fill();
 
-  // Speed indicator ring
-  const speed=Math.sqrt(liquid.vx*liquid.vx+liquid.vy*liquid.vy);
-  if(speed>0.003){
-    ctx.strokeStyle=`rgba(0,229,255,${Math.min(speed*30,0.6)})`;
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.ellipse(cx,cy,wobX+6,wobY+4,liquid.vx*2,0,Math.PI*2);
-    ctx.stroke();
+  // Specular
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.beginPath();ctx.ellipse(bxPx-br*0.27,byPx-br*0.27,br*0.27,br*0.17,-0.4,0,Math.PI*2);ctx.fill();
+
+  // Speed trail
+  const spd=Math.sqrt(ball.vx**2+ball.vy**2);
+  if(spd>0.003){
+    const tx=bxPx-ball.vx*BALL_CW*9, ty=byPx-ball.vy*BALL_CH*9;
+    const tr=ctx.createLinearGradient(tx,ty,bxPx,byPx);
+    tr.addColorStop(0,'rgba(124,58,237,0)');
+    tr.addColorStop(1,`rgba(180,100,255,${Math.min(spd*18,0.4)})`);
+    ctx.strokeStyle=tr; ctx.lineWidth=br*1.0; ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(bxPx,byPx);ctx.stroke();
   }
-}
-
-async function updateLiquidMotors(){
-  const connected=getConnectedDevices().length>0||(isGuest&&guestConn&&guestConn.open);
-  if(!connected)return;
-
-  // Rate limit motor sends
-  const now=Date.now();
-  if(now-liquidLastSend<120)return;
-  liquidLastSend=now;
-
-  const vol=parseFloat(document.getElementById('liquid-volume').value)||0.45;
-  const intensity=parseInt(document.getElementById('liquid-intensity').value)||60;
-
-  // Map liquid center to motor grid
-  // liquid.x/y are 0-1 across the canvas
-  // Map to motor col/row
-  const motorX=liquid.x*(MOTOR_COLS-1);
-  const motorY=liquid.y*(MOTOR_ROWS-1);
-
-  // Determine which motors are covered by the liquid blob
-  const radius=vol*2.0; // in motor-grid units
-  const newActive=new Set();
-
-  for(let row=0;row<MOTOR_ROWS;row++){
-    for(let col=0;col<MOTOR_COLS;col++){
-      const dx=col-motorX, dy=row-motorY;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist<=radius){
-        const mIdx=currentSide==='front'?(row*MOTOR_COLS+col):(100+row*MOTOR_COLS+col);
-        newActive.add(mIdx);
-      }
-    }
-  }
-
-  // Only send to newly active motors
-  for(const mIdx of newActive){
-    if(!liquidActiveMotors.has(mIdx)){
-      // Scale intensity by how centered the motor is
-      const col=mIdx<100?(mIdx%MOTOR_COLS):((mIdx-100)%MOTOR_COLS);
-      const row=mIdx<100?Math.floor(mIdx/MOTOR_COLS):Math.floor((mIdx-100)/MOTOR_COLS);
-      const dx=col-motorX, dy=row-motorY;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      const scaledIntensity=Math.round(intensity*(1-dist/radius)*0.8+intensity*0.2);
-
-      sendLiquidBurst(mIdx, Math.min(scaledIntensity,100));
-      flashMotorZone(mIdx);
-    }
-  }
-
-  // Update active set
-  liquidActiveMotors.clear();
-  for(const m of newActive)liquidActiveMotors.add(m);
-
-  // Update log
-  const speed=Math.sqrt(liquid.vx*liquid.vx+liquid.vy*liquid.vy);
-  if(speed>0.004&&newActive.size>0){
-    const sl=document.getElementById('shake-log');
-    sl.textContent=`💧 激活 ${newActive.size} 个马达 · 强度 ${intensity}`;
-    sl.className='shake-log triggered';
-  } else if(newActive.size===0){
-    const sl=document.getElementById('shake-log');
-    sl.textContent='倾斜手机让液体流动...';
-    sl.className='shake-log';
-  }
-}
-
-function stopAllLiquidMotors(){
-  liquidActiveMotors.clear();
-}
-
-async function sendLiquidBurst(mIdx, intensity){
-  const pkt=buildMotorPacket(mIdx, intensity);
-  if(isGuest&&guestConn&&guestConn.open){
-    guestConn.send({type:'motor',binary:Array.from(new Uint8Array(pkt)),label:'液体马达'+mIdx});
-  } else {
-    const connected=getConnectedDevices();
-    if(!connected.length)return;
-    try{await sendToAll(Array.from(pkt));}catch(e){}
-  }
-}
-
-function flashMotorZone(mIdx){
-  // Only flash if on correct side
-  if(currentSide==='front'&&mIdx>=100)return;
-  if(currentSide==='back'&&mIdx<100)return;
-  const zone=document.getElementById('mz-'+mIdx);
-  if(!zone||activeMotors.has(mIdx))return;
-  zone.classList.add('flash');
-  setTimeout(()=>zone.classList.remove('flash'),200);
 }
 
 function showShakePanel(){
   document.getElementById('shake-panel').classList.add('show');
 }
+
+
 
 // Init
 buildBodyMap();
