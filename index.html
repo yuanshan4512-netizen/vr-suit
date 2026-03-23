@@ -550,13 +550,21 @@ async function addDevice(){
       filters:[{namePrefix:'Truegear'}],optionalServices:[UART_SVC]
     });
     // Check if already added
-    if(devices.find(d=>d.id===ble.id)){log('该设备已添加','warn');return;}
-    const entry={id:ble.id,name:ble.name,device:ble,rxChar:null,status:'reconnecting',reconnectTimer:null,reconnectAttempts:0};
+    if(devices.find(d=>d.id===ble.id)){
+      log('该设备已添加','warn');
+      // Restore status to current state
+      const connected=getConnectedDevices();
+      setStatus(connected.length>0?'已连接：'+connected[0].name:'添加设备开始使用','');
+      return;
+    }
+    const entry={id:ble.id,name:ble.name,device:ble,rxChar:null,status:'reconnecting',
+                 reconnectTimer:null,reconnectAttempts:0,everConnected:false};
     devices.push(entry);
     renderDevices();
     await connectDevice(entry);
   }catch(err){
-    setStatus('未选择设备','');
+    const connected=getConnectedDevices();
+    setStatus(connected.length>0?'已连接：'+connected[0].name:'未选择设备','');
     if(err.name!=='NotFoundError')log('错误：'+err.message,'error');
   }
 }
@@ -1147,6 +1155,7 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
+  if(name==='bodymap') requestAnimationFrame(()=>initTouchCanvas());
 }
 
 function log(msg,type='info'){
@@ -1504,7 +1513,7 @@ function showShakePanel(){
 
 
 // Init
-buildBodyMap();
+setTimeout(()=>buildBodyMap(),200);
 buildMotorPicker();
 renderFavorites();
 renderDevices();
