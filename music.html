@@ -6,89 +6,117 @@
   <title>音乐体感同步</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
-    :root{--bg:#04060f;--bg2:#080d1a;--bg3:#0d1525;--border:#1a2540;
+    :root{
+      --bg:#04060f;--bg2:#080d1a;--bg3:#0d1525;--border:#1a2540;
       --accent:#00e5ff;--accent2:#7c3aed;--green:#00ff88;
       --red:#ff3366;--yellow:#ffcc00;--text:#c8d8f0;--dim:#3a4a6a;
-      --font-hd:'Orbitron',monospace;--font-mono:'Share Tech Mono',monospace;}
+      --font-hd:'Orbitron',monospace;--font-mono:'Share Tech Mono',monospace;
+    }
     *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-    body{background:var(--bg);color:var(--text);font-family:var(--font-mono);min-height:100vh;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-mono);min-height:100vh;overflow-x:hidden;}
     body::before{content:'';pointer-events:none;position:fixed;inset:0;z-index:9999;
       background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);}
+
     .app{max-width:480px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+
+    /* Header */
     .header{display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;border-bottom:1px solid var(--border);}
     .logo{font-family:var(--font-hd);font-size:17px;font-weight:900;letter-spacing:3px;color:var(--accent);text-shadow:0 0 20px var(--accent);}
     .logo span{color:var(--accent2);}
-    .back-btn{font-size:11px;color:var(--dim);text-decoration:none;border:1px solid var(--border);padding:4px 10px;border-radius:6px;transition:all .2s;}
+    .back-btn{font-size:11px;color:var(--dim);text-decoration:none;border:1px solid var(--border);
+      padding:4px 10px;border-radius:6px;transition:all .2s;}
     .back-btn:hover{color:var(--accent);border-color:var(--accent);}
+
+    /* Status */
     .status-line{font-size:11px;color:var(--dim);text-align:center;letter-spacing:1px;min-height:16px;}
-    .status-line.ok{color:var(--green);}.status-line.error{color:var(--red);}.status-line.load{color:var(--yellow);}
+    .status-line.ok{color:var(--green);}
+    .status-line.error{color:var(--red);}
+    .status-line.load{color:var(--yellow);}
+
+    /* Card */
     .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;}
     .card-title{font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:12px;}
-    .upload-zone{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+
+    /* Upload */
+    .upload-zone{border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;
+      cursor:pointer;transition:all .2s;position:relative;}
     .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,229,255,.03);}
     .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
     .upload-icon{font-size:28px;margin-bottom:6px;}
-    .upload-text{font-size:13px;color:var(--dim);}
-    .track-info{display:none;align-items:center;gap:10px;padding:8px 0;}
+    .upload-text{font-size:13px;color:var(--dim);letter-spacing:1px;}
+
+    /* Track info */
+    .track-info{display:none;align-items:center;gap:12px;padding:10px 0;}
     .track-info.show{display:flex;}
-    .track-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .track-icon{font-size:28px;}
+    .track-name{font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .track-dur{font-size:11px;color:var(--dim);}
-    /* Spectrum canvas */
-    .viz-wrap{border-radius:10px;overflow:hidden;background:var(--bg3);border:1px solid var(--border);position:relative;margin-bottom:6px;}
-    .viz-label{position:absolute;top:5px;left:8px;font-size:9px;color:rgba(200,216,240,.4);letter-spacing:2px;text-transform:uppercase;z-index:1;}
-    canvas{display:block;width:100%;}
+
+    /* Waveform / spectrum canvas */
+    .viz-wrap{border-radius:10px;overflow:hidden;background:var(--bg3);border:1px solid var(--border);position:relative;}
+    #waveform-canvas{display:block;width:100%;height:80px;}
+    #spectrum-canvas{display:block;width:100%;height:100px;}
+    .viz-label{position:absolute;top:6px;left:8px;font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;}
+
     /* Transport */
-    .transport{display:flex;align-items:center;gap:10px;margin-top:10px;}
-    .play-btn{width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;
-      background:linear-gradient(135deg,var(--accent2),#4f46e5);color:white;font-size:18px;flex-shrink:0;transition:all .2s;}
+    .transport{display:flex;align-items:center;gap:10px;margin-top:4px;}
+    .play-btn{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;transition:all .2s;
+      background:linear-gradient(135deg,var(--accent2),#4f46e5);color:white;font-size:20px;flex-shrink:0;}
     .play-btn:disabled{opacity:.3;cursor:not-allowed;}
     .progress-wrap{flex:1;height:4px;background:var(--bg3);border-radius:2px;cursor:pointer;position:relative;}
-    .progress-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;}
-    .time-label{font-size:11px;color:var(--dim);white-space:nowrap;}
+    .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .1s linear;width:0%;}
+    .time-label{font-size:11px;color:var(--dim);white-space:nowrap;font-family:var(--font-mono);}
+
     /* Settings */
     .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
     .setting{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
     .setting label{font-size:9px;color:var(--dim);letter-spacing:2px;display:block;margin-bottom:4px;text-transform:uppercase;}
-    .setting select{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;cursor:pointer;}
+    .setting select,.setting input[type=range]{width:100%;background:transparent;border:none;
+      color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;cursor:pointer;}
     .setting select option{background:var(--bg3);}
-    .setting input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;outline:none;
-      background:linear-gradient(to right,var(--accent) var(--pct,50%),var(--bg) var(--pct,50%));}
-    .setting input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;}
-    .setting-val{font-size:12px;color:var(--accent);text-align:right;margin-top:2px;}
-    /* Beat map */
-    .beat-map{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;}
-    .bc{border-radius:5px;background:var(--bg3);border:1px solid var(--border);
-      aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-      font-size:8px;color:var(--dim);transition:all .08s;}
-    .bc.f{border-color:rgba(0,229,255,.15);}
-    .bc.b{border-color:rgba(0,255,136,.15);}
-    .bc.ak{background:rgba(0,229,255,.9);border-color:var(--accent);box-shadow:0 0 10px var(--accent);color:#000;}
-    .bc.ab{background:rgba(124,58,237,.85);border-color:var(--accent2);color:#fff;}
-    .bc.as{background:rgba(255,204,0,.7);border-color:var(--yellow);color:#000;}
-    /* Freq bars */
-    .freq-bars{display:flex;gap:2px;height:44px;align-items:flex-end;margin-top:8px;}
-    .fb{flex:1;border-radius:2px 2px 0 0;min-height:2px;transition:height .04s;}
-    .fb.k{background:var(--accent);}
-    .fb.s{background:var(--yellow);}
-    .fb.bx{background:var(--accent2);}
-    /* Beat log */
-    .beat-log{text-align:center;font-size:12px;min-height:18px;letter-spacing:1px;margin-top:6px;}
-    .beat-log.k{color:var(--accent);}
-    .beat-log.b{color:var(--accent2);}
-    .beat-log.s{color:var(--yellow);}
-    /* BLE */
+    .setting input[type=range]{-webkit-appearance:none;height:3px;border-radius:2px;
+      background:linear-gradient(to right,var(--accent) var(--val,50%),var(--bg) var(--val,50%));}
+    .setting input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+      border-radius:50%;background:var(--accent);cursor:pointer;}
+    .setting-val{font-size:12px;color:var(--accent);text-align:right;margin-top:2px;font-family:var(--font-hd);}
+
+    /* Beat visualizer - body map flash */
+    .beat-map{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:4px;}
+    .beat-cell{border-radius:5px;background:var(--bg3);border:1px solid var(--border);
+      aspect-ratio:1;transition:all .1s;display:flex;align-items:center;justify-content:center;
+      font-size:8px;color:var(--dim);}
+    .beat-cell.front{border-color:rgba(0,229,255,.2);}
+    .beat-cell.back {border-color:rgba(0,255,136,.2);}
+    .beat-cell.active-low {background:rgba(0,229,255,.8);border-color:var(--accent);box-shadow:0 0 8px var(--accent);color:var(--bg);}
+    .beat-cell.active-mid {background:rgba(124,58,237,.7);border-color:var(--accent2);color:white;}
+    .beat-cell.active-hi  {background:rgba(0,255,136,.5);border-color:var(--green);color:var(--bg);}
+
+    /* BLE status */
     .ble-row{display:flex;align-items:center;justify-content:space-between;}
-    .ble-chip{display:flex;align-items:center;gap:6px;font-size:11px;}
+    .ble-chip{display:flex;align-items:center;gap:5px;font-size:11px;}
     .ble-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);}
     .ble-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
     @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
-    .btn{padding:8px 18px;border:none;border-radius:8px;font-family:var(--font-mono);
-      font-size:11px;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+
+    .btn{padding:10px 20px;border:none;border-radius:8px;font-family:var(--font-mono);
+      font-size:12px;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
     .btn:disabled{opacity:.3;cursor:not-allowed;}
     .btn-primary{background:linear-gradient(135deg,var(--accent2),#4f46e5);color:white;}
-    /* Legend */
-    .legend{display:flex;gap:12px;justify-content:center;margin-top:6px;}
-    .legend span{font-size:9px;letter-spacing:1px;}
+    .btn-sm{padding:6px 14px;font-size:11px;border-radius:6px;}
+    .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(255,51,102,.4);}
+
+    /* Beat log */
+    .beat-log{font-size:11px;color:var(--dim);text-align:center;min-height:14px;letter-spacing:1px;}
+    .beat-log.kick{color:var(--accent);}
+    .beat-log.bass{color:var(--accent2);}
+    .beat-log.hi{color:var(--green);}
+
+    /* Sensitivity bars */
+    .freq-bars{display:flex;gap:3px;height:40px;align-items:flex-end;margin-top:8px;}
+    .freq-bar{flex:1;border-radius:2px 2px 0 0;transition:height .05s;min-height:2px;}
+    .freq-bar.low{background:var(--accent);}
+    .freq-bar.mid{background:var(--accent2);}
+    .freq-bar.hi {background:var(--green);}
   </style>
 </head>
 <body>
@@ -99,16 +127,16 @@
     <a href="index.html" class="back-btn">← 控制台</a>
   </div>
 
-  <div class="status-line" id="status">上传 MP3 开始体验</div>
+  <div class="status-line" id="status">上传MP3开始体验</div>
 
-  <!-- BLE -->
+  <!-- BLE connection -->
   <div class="card">
     <div class="ble-row">
       <div class="ble-chip">
         <div class="ble-dot" id="ble-dot"></div>
         <span id="ble-label">未连接体感服</span>
       </div>
-      <button class="btn btn-primary" id="btn-ble" onclick="connectBLE()">连接体感服</button>
+      <button class="btn btn-primary btn-sm" id="btn-ble" onclick="connectBLE()">连接体感服</button>
     </div>
   </div>
 
@@ -118,27 +146,30 @@
     <div class="upload-zone" id="upload-zone">
       <input type="file" id="file-input" accept="audio/*" onchange="loadAudio(this.files[0])">
       <div class="upload-icon">🎵</div>
-      <div class="upload-text">点击上传 MP3 / WAV / FLAC</div>
+      <div class="upload-text">点击上传 MP3 / WAV / AAC</div>
     </div>
     <div class="track-info" id="track-info">
-      <span style="font-size:22px">🎶</span>
-      <span class="track-name" id="track-name"></span>
-      <span class="track-dur" id="track-dur"></span>
+      <div class="track-icon">🎶</div>
+      <div class="track-name" id="track-name">—</div>
+      <div class="track-dur" id="track-dur">0:00</div>
     </div>
   </div>
 
-  <!-- Visualizer -->
+  <!-- Waveform -->
   <div class="card">
-    <div class="card-title">📊 频谱分析（已消除人声）</div>
-    <!-- Instrument spectrum after vocal removal -->
+    <div class="card-title">📊 波形 & 节拍</div>
+    <div class="viz-wrap" style="margin-bottom:6px;">
+      <span class="viz-label">WAVEFORM</span>
+      <canvas id="waveform-canvas"></canvas>
+    </div>
     <div class="viz-wrap">
-      <span class="viz-label">INSTRUMENT SPECTRUM</span>
-      <canvas id="spec-canvas" height="90"></canvas>
+      <span class="viz-label">SPECTRUM</span>
+      <canvas id="spectrum-canvas"></canvas>
     </div>
     <!-- Transport -->
-    <div class="transport">
+    <div class="transport" style="margin-top:10px;">
       <button class="play-btn" id="play-btn" onclick="togglePlay()" disabled>▶</button>
-      <div class="progress-wrap" onclick="seekAudio(event)">
+      <div class="progress-wrap" id="progress-wrap" onclick="seekAudio(event)">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
       <span class="time-label" id="time-label">0:00 / 0:00</span>
@@ -147,177 +178,187 @@
 
   <!-- Settings -->
   <div class="card">
-    <div class="card-title">⚙️ 参数调节</div>
+    <div class="card-title">⚙️ 体感参数</div>
     <div class="settings-grid">
       <div class="setting">
-        <label>模式</label>
-        <select id="mode">
-          <option value="dance">跳舞 / 现场</option>
-          <option value="game">游戏 / 电影</option>
-          <option value="bass">Bass 强化</option>
+        <label>振动模式</label>
+        <select id="haptic-mode">
+          <option value="beat">节拍模式（跳舞/现场）</option>
+          <option value="immersive">沉浸模式（游戏/电影）</option>
+          <option value="bass">低音模式（Bass增强）</option>
         </select>
       </div>
       <div class="setting">
         <label>振动强度</label>
-        <input type="range" id="s-intensity" min="20" max="100" value="75"
-               oninput="setSlider(this,'v-intensity')">
-        <div class="setting-val" id="v-intensity">75</div>
+        <input type="range" id="haptic-intensity" min="20" max="100" value="70"
+               oninput="updateIntensity(this.value)" style="--val:70%">
+        <div class="setting-val" id="intensity-val">70</div>
       </div>
       <div class="setting">
         <label>节拍灵敏度</label>
-        <input type="range" id="s-sens" min="1" max="10" value="6"
-               oninput="setSlider(this,'v-sens')">
-        <div class="setting-val" id="v-sens">6</div>
+        <input type="range" id="beat-sensitivity" min="1" max="10" value="5"
+               oninput="updateSensitivity(this.value)" style="--val:50%">
+        <div class="setting-val" id="sensitivity-val">5</div>
       </div>
       <div class="setting">
-        <label>人声消除</label>
-        <input type="range" id="s-vocal" min="0" max="10" value="8"
-               oninput="setSlider(this,'v-vocal')">
-        <div class="setting-val" id="v-vocal">8</div>
+        <label>扩散效果</label>
+        <select id="spread-mode">
+          <option value="center">中心扩散</option>
+          <option value="wave">波浪扩散</option>
+          <option value="random">随机跳动</option>
+        </select>
       </div>
     </div>
   </div>
 
-  <!-- Beat map -->
+  <!-- Beat visualizer -->
   <div class="card">
     <div class="card-title">💥 实时体感分布</div>
     <div class="beat-map" id="beat-map"></div>
-    <div class="freq-bars" id="freq-bars"></div>
-    <div class="legend">
-      <span style="color:var(--accent)">■ 底鼓</span>
-      <span style="color:var(--accent2)">■ 贝斯</span>
-      <span style="color:var(--yellow)">■ 军鼓</span>
+    <div style="display:flex;gap:12px;margin-top:8px;justify-content:center;">
+      <span style="font-size:9px;color:var(--accent)">■ 鼓点/低频</span>
+      <span style="font-size:9px;color:var(--accent2)">■ 中频</span>
+      <span style="font-size:9px;color:var(--green)">■ 高频</span>
     </div>
+    <!-- Real-time freq bars -->
+    <div class="freq-bars" id="freq-bars"></div>
     <div class="beat-log" id="beat-log">等待音乐...</div>
   </div>
 
 </div>
+
 <script>
 // ═══════════════════════════════════════════
-//  BLE PROTOCOL (same as main app)
+//  BLE (same protocol as main app)
 // ═══════════════════════════════════════════
 const UART_SVC='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const UART_RX ='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const FD1=[1,1,4,4,1,1,4,4,1,1,4,4,1,1,4,4,1,1,4,4];
 const FD2=[0x8000,0x0400,0x8000,0x0400,0x4000,0x0200,0x4000,0x0200,
-           0x2000,0x0100,0x2000,0x0100,0x1000,0x0080,0x1000,0x0080,
-           0x0800,0x0040,0x0800,0x0040];
+           0x2000,0x0100,0x2000,0x0100,0x1000,0x0080,0x1000,0x0080,0x0800,0x0040,0x0800,0x0040];
 const BD1=[2,2,3,3,2,2,3,3,2,2,3,3,2,2,3,3,2,2,3,3];
 const BD2=[...FD2];
 const hi=v=>(v>>8)&0xFF, lo=v=>v&0xFF, i8=v=>v&0xFF;
-const HANDSHAKE=new Uint8Array([
-  0x68,0x68,0x01,0x02,0x00,0x00,0x00,0x01,
+const HANDSHAKE=new Uint8Array([0x68,0x68,0x01,0x02,0x00,0x00,0x00,0x01,
   0xF4,0x00,0x46,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0x16]);
 
-let rxChar=null, bleSending=false;
+let bleDevice=null, rxChar=null;
+let sending=false; // simple send lock
 
-function motorBitmasks(idx){
+function motorBitmasks(indices){
   let b1=0,b2=0,b3=0,b4=0;
-  for(const i of idx){
+  for(const i of indices){
     if(i<100){if(FD1[i]===1)b1|=FD2[i];if(FD1[i]===4)b4|=FD2[i];}
     else{const j=i-100;if(BD1[j]===2)b2|=BD2[j];if(BD1[j]===3)b3|=BD2[j];}
   }
   return[b1,b2,b3,b4];
 }
 
-function buildShakePkt(motors,intensity,durMs){
-  const[b1,b2,b3,b4]=motorBitmasks(motors);
-  const si=i8(intensity), ei=Math.max(5,Math.round(intensity*0.12));
-  const et=Math.min(durMs,500);
-  // mode 2 = Fade (强→弱，更自然)
-  return new Uint8Array([
-    0x68,0x68,1,
-    2,0,                    // Fade mode
-    0,0,                    // start_time = 0
-    hi(et),lo(et),          // end_time
-    si,ei,                  // start/end intensity
-    hi(b1),lo(b1),hi(b2),lo(b2),hi(b3),lo(b3),hi(b4),lo(b4),
-    0x16
-  ]);
+function buildShake(indices,intensity,durationMs){
+  const[b1,b2,b3,b4]=motorBitmasks(indices);
+  const si=i8(intensity),ei=Math.max(5,Math.round(intensity*0.1));
+  const et=Math.min(durationMs,1000);
+  const bytes=[2,0, 0,0, hi(et),lo(et), si,ei,
+               hi(b1),lo(b1),hi(b2),lo(b2),hi(b3),lo(b3),hi(b4),lo(b4)];
+  return new Uint8Array([0x68,0x68,1,...bytes,0x16]);
 }
 
 async function sendHaptic(pkt){
-  if(!rxChar||bleSending)return;
-  bleSending=true;
-  try{await rxChar.writeValueWithoutResponse(pkt);}catch(e){}
-  bleSending=false;
+  if(!rxChar||sending)return;
+  sending=true;
+  try{ await rxChar.writeValueWithoutResponse(pkt); }catch(e){}
+  sending=false;
 }
 
 async function connectBLE(){
   if(!navigator.bluetooth){setStatus('❌ 请用 Chrome 或 Edge','error');return;}
   try{
     setStatus('搜索体感服...','load');
-    const dev=await navigator.bluetooth.requestDevice({
+    bleDevice=await navigator.bluetooth.requestDevice({
       filters:[{namePrefix:'Truegear'}],optionalServices:[UART_SVC]
     });
-    const server=await dev.gatt.connect();
+    const server=await bleDevice.gatt.connect();
     const svc=await server.getPrimaryService(UART_SVC);
     rxChar=await svc.getCharacteristic(UART_RX);
     await rxChar.writeValueWithoutResponse(HANDSHAKE);
     document.getElementById('ble-dot').classList.add('on');
-    document.getElementById('ble-label').textContent=dev.name;
+    document.getElementById('ble-label').textContent=bleDevice.name;
     document.getElementById('btn-ble').textContent='已连接';
     document.getElementById('btn-ble').disabled=true;
-    dev.addEventListener('gattserverdisconnected',()=>{
+    bleDevice.addEventListener('gattserverdisconnected',()=>{
       rxChar=null;
       document.getElementById('ble-dot').classList.remove('on');
       document.getElementById('ble-label').textContent='已断开';
       document.getElementById('btn-ble').disabled=false;
       document.getElementById('btn-ble').textContent='重新连接';
-    },{once:true});
-    setStatus('已连接：'+dev.name,'ok');
-  }catch(e){setStatus('连接失败','error');}
+    });
+    setStatus('已连接：'+bleDevice.name,'ok');
+  }catch(e){
+    setStatus('连接失败','error');
+  }
 }
 
 // ═══════════════════════════════════════════
-//  AUDIO ENGINE with VOCAL SUPPRESSION
+//  AUDIO ENGINE
 // ═══════════════════════════════════════════
-let audioCtx=null, audioBuffer=null;
-let sourceNode=null, analyserL=null, analyserR=null;
-let isPlaying=false, startTime=0, pauseOffset=0, rafId=null;
+let audioCtx=null;
+let audioBuffer=null;
+let sourceNode=null;
+let analyser=null;
+let gainNode=null;
+let isPlaying=false;
+let startTime=0;
+let pauseOffset=0;
+let animFrameId=null;
 
-// Vocal suppression: we use TWO analysers (L and R channels separately)
-// Then compute Side = L - R (instruments) and reduce Mid = L + R (vocals)
-// This works because vocals are almost always panned to center
+// Onset detection state
+const HISTORY_LEN=43; // ~1 second at 23ms frames
+const freqBands={
+  kick: {lo:20,  hi:120, history:new Float32Array(HISTORY_LEN), ptr:0, lastTrigger:0, minInterval:180},
+  bass: {lo:120, hi:280, history:new Float32Array(HISTORY_LEN), ptr:0, lastTrigger:0, minInterval:120},
+  mid:  {lo:280, hi:800, history:new Float32Array(HISTORY_LEN), ptr:0, lastTrigger:0, minInterval:100},
+  hi:   {lo:800, hi:4000,history:new Float32Array(HISTORY_LEN), ptr:0, lastTrigger:0, minInterval:80},
+};
 
 async function loadAudio(file){
   if(!file)return;
-  setStatus('解析音频...','load');
+  setStatus('解析音频中...','load');
   try{
     if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     const buf=await file.arrayBuffer();
     audioBuffer=await audioCtx.decodeAudioData(buf);
-    drawWaveformPreview(audioBuffer);
+    // Draw waveform
+    drawWaveform(audioBuffer);
+    // UI
     document.getElementById('track-name').textContent=file.name.replace(/\.[^.]+$/,'');
-    document.getElementById('track-dur').textContent=fmt(audioBuffer.duration);
+    document.getElementById('track-dur').textContent=formatTime(audioBuffer.duration);
     document.getElementById('track-info').classList.add('show');
-    document.getElementById('upload-zone').style.display='none';
     document.getElementById('play-btn').disabled=false;
+    document.getElementById('upload-zone').style.display='none';
     pauseOffset=0;
-    setStatus('✅ 解析完成（'+fmt(audioBuffer.duration)+'）','ok');
-  }catch(e){setStatus('解析失败：'+e.message,'error');}
+    setStatus('解析完成，按播放开始','ok');
+    document.getElementById('beat-log').textContent='准备就绪';
+  }catch(e){
+    setStatus('解析失败：'+e.message,'error');
+  }
 }
 
-function drawWaveformPreview(buf){
-  // Draw a quick waveform preview on the spectrum canvas before playback
-  const cv=document.getElementById('spec-canvas');
-  cv.width=cv.offsetWidth||440; cv.height=90;
+function drawWaveform(buf){
+  const cv=document.getElementById('waveform-canvas');
+  cv.width=cv.offsetWidth||440; cv.height=80;
   const ctx=cv.getContext('2d');
-  const ch0=buf.getChannelData(0);
-  const ch1=buf.numberOfChannels>1?buf.getChannelData(1):ch0;
-  const W=cv.width,H=cv.height,mid=H/2;
-  const step=Math.floor(buf.length/W);
-  ctx.fillStyle='rgba(13,21,37,1)';ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='rgba(0,229,255,0.5)';ctx.lineWidth=1;ctx.beginPath();
-  for(let x=0;x<W;x++){
-    // Side channel preview (L-R) - shows instruments
-    let maxSide=0;
-    for(let j=0;j<step&&x*step+j<buf.length;j++){
-      const s=Math.abs(ch0[x*step+j]-ch1[x*step+j])*0.5;
-      if(s>maxSide)maxSide=s;
-    }
-    const h=maxSide*mid*0.85;
-    ctx.moveTo(x,mid-h);ctx.lineTo(x,mid+h);
+  const data=buf.getChannelData(0);
+  const step=Math.floor(data.length/cv.width);
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const mid=cv.height/2;
+  ctx.strokeStyle='rgba(0,229,255,0.6)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let x=0;x<cv.width;x++){
+    let max=0;
+    for(let j=0;j<step;j++){const v=Math.abs(data[x*step+j]||0);if(v>max)max=v;}
+    const h=max*mid*0.9;
+    ctx.moveTo(x,mid-h); ctx.lineTo(x,mid+h);
   }
   ctx.stroke();
 }
@@ -325,386 +366,317 @@ function drawWaveformPreview(buf){
 function startAudio(){
   if(!audioCtx||!audioBuffer)return;
   if(audioCtx.state==='suspended')audioCtx.resume();
-
   sourceNode=audioCtx.createBufferSource();
   sourceNode.buffer=audioBuffer;
-
-  // Create stereo splitter for Mid/Side processing
-  const splitter=audioCtx.createChannelSplitter(2);
-  const merger=audioCtx.createChannelMerger(2);
-
-  // L and R gain nodes for vocal suppression
-  const gainL=audioCtx.createGain();
-  const gainR=audioCtx.createGain();
-
-  // Two analysers: one for L, one for R
-  analyserL=audioCtx.createAnalyser();
-  analyserR=audioCtx.createAnalyser();
-  analyserL.fftSize=4096; analyserL.smoothingTimeConstant=0.6;
-  analyserR.fftSize=4096; analyserR.smoothingTimeConstant=0.6;
-
-  // Connect: source → splitter → L/R gains → analysers → merger → output
-  sourceNode.connect(splitter);
-  splitter.connect(gainL,0);
-  splitter.connect(gainR,1);
-  gainL.connect(analyserL);
-  gainR.connect(analyserR);
-  gainL.connect(merger,0,0);
-  gainR.connect(merger,0,1);
-  merger.connect(audioCtx.destination);
-
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=2048;
+  analyser.smoothingTimeConstant=0.75;
+  gainNode=audioCtx.createGain();
+  gainNode.gain.value=1;
+  sourceNode.connect(analyser);
+  analyser.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
   sourceNode.start(0,pauseOffset);
   startTime=audioCtx.currentTime-pauseOffset;
   isPlaying=true;
   document.getElementById('play-btn').textContent='⏸';
-  rafId=requestAnimationFrame(analysisLoop);
+  animFrameId=requestAnimationFrame(analysisLoop);
   sourceNode.onended=()=>{
     if(isPlaying){isPlaying=false;pauseOffset=0;document.getElementById('play-btn').textContent='▶';}
+    cancelAnimationFrame(animFrameId);
   };
 }
 
 function stopAudio(){
   if(sourceNode)try{sourceNode.stop();sourceNode.disconnect();}catch(e){}
-  cancelAnimationFrame(rafId);
+  cancelAnimationFrame(animFrameId);
   isPlaying=false;
   document.getElementById('play-btn').textContent='▶';
 }
 
 function togglePlay(){
   if(!audioBuffer)return;
-  if(isPlaying){pauseOffset=audioCtx.currentTime-startTime;stopAudio();}
-  else startAudio();
+  if(isPlaying){
+    pauseOffset=audioCtx.currentTime-startTime;
+    stopAudio();
+  } else {
+    startAudio();
+  }
 }
 
 function seekAudio(e){
   if(!audioBuffer)return;
   const rect=e.currentTarget.getBoundingClientRect();
-  pauseOffset=(e.clientX-rect.left)/rect.width*audioBuffer.duration;
+  const pct=(e.clientX-rect.left)/rect.width;
+  pauseOffset=pct*audioBuffer.duration;
   if(isPlaying){stopAudio();startAudio();}
-  else document.getElementById('progress-fill').style.width=
-    (pauseOffset/audioBuffer.duration*100)+'%';
+  else{document.getElementById('progress-fill').style.width=(pct*100)+'%';}
 }
 
 // ═══════════════════════════════════════════
-//  CORE ALGORITHM
-//
-//  Step 1: Mid/Side decomposition per frame
-//    Mid  = (L+R)/2  ← vocal energy (suppress)
-//    Side = (L-R)/2  ← instrument energy (use)
-//
-//  Step 2: Spectral Flux onset detection
-//    flux = sum of positive differences between current and previous spectrum
-//    Positive flux only = new energy appearing = onset
-//
-//  Step 3: Per-band cooldown + adaptive threshold
-//    threshold = median(flux history) * multiplier
-//    This adapts to song dynamics automatically
-//
-//  Step 4: Instrument identification
-//    Kick:  sub-bass flux (30-100Hz) high, NOT correlated with snare
-//    Snare: mid flux (150-300Hz) + high-freq flux (3-8kHz) together
-//    Bass:  low-mid flux (80-250Hz), sustained not transient
+//  ANALYSIS LOOP - runs every animation frame
 // ═══════════════════════════════════════════
-
-const FFT=4096;
-const HIST=60; // ~1.4 seconds of history at 23ms/frame
-
-// Per-band spectral flux history
-const bands={
-  kick: {loHz:30,  hiHz:100, flux:new Float32Array(HIST), ptr:0, lastT:0, minGap:160, prevSpec:null},
-  bass: {loHz:80,  hiHz:250, flux:new Float32Array(HIST), ptr:0, lastT:0, minGap:100, prevSpec:null},
-  snare:{loHz:150, hiHz:8000,flux:new Float32Array(HIST), ptr:0, lastT:0, minGap:140, prevSpec:null},
-};
-
-// Previous frame spectra for flux calculation
-let prevL=null, prevR=null;
-
-const freqBuf=new Float32Array(FFT/2);
-const freqBufR=new Float32Array(FFT/2);
-
-function getBinRange(hz0,hz1,sampleRate){
-  const binHz=sampleRate/FFT;
-  return[Math.max(0,Math.floor(hz0/binHz)), Math.min(FFT/2-1,Math.ceil(hz1/binHz))];
-}
-
-// Compute spectral flux for a bin range (positive only)
-function spectralFlux(cur,prev,lo,hi){
-  if(!prev)return 0;
-  let flux=0;
-  for(let i=lo;i<=hi;i++){
-    const diff=cur[i]-prev[i];
-    if(diff>0)flux+=diff;  // positive flux only = onset
-  }
-  return flux/(hi-lo+1);
-}
-
-// Adaptive threshold: mean + k*std of recent flux history
-function adaptiveThreshold(history,k){
-  const n=history.length;
-  let mean=0;
-  for(let i=0;i<n;i++)mean+=history[i];
-  mean/=n;
-  let variance=0;
-  for(let i=0;i<n;i++)variance+=(history[i]-mean)**2;
-  const std=Math.sqrt(variance/n);
-  return mean+k*std;
-}
+const freqData=new Uint8Array(1024);
+const timeData=new Uint8Array(2048);
+let waveformPlayPos=0;
 
 function analysisLoop(){
-  if(!isPlaying)return;
-  rafId=requestAnimationFrame(analysisLoop);
+  if(!isPlaying){return;}
+  animFrameId=requestAnimationFrame(analysisLoop);
 
+  analyser.getByteFrequencyData(freqData);
+  analyser.getByteTimeDomainData(timeData);
+
+  const currentTime=audioCtx.currentTime-startTime;
+  const progress=currentTime/audioBuffer.duration;
+  document.getElementById('progress-fill').style.width=(Math.min(progress,1)*100)+'%';
+  document.getElementById('time-label').textContent=
+    formatTime(currentTime)+' / '+formatTime(audioBuffer.duration);
+
+  // Draw spectrum
+  drawSpectrum(freqData);
+
+  // Get band energies
   const sampleRate=audioCtx.sampleRate;
-  analyserL.getFloatFrequencyData(freqBuf);
-  analyserR.getFloatFrequencyData(freqBufR);
+  const binHz=sampleRate/(analyser.fftSize);
 
-  // Convert dB to linear (0-1) and apply Mid/Side suppression
-  const vocalSuppression=parseInt(document.getElementById('s-vocal').value)/10;
-  const linL=new Float32Array(FFT/2);
-  const linR=new Float32Array(FFT/2);
-  const linInst=new Float32Array(FFT/2); // instrument-only spectrum
-
-  for(let i=0;i<FFT/2;i++){
-    // dB to linear
-    const l=Math.pow(10,(freqBuf[i])/20);
-    const r=Math.pow(10,(freqBufR[i])/20);
-    linL[i]=isFinite(l)?l:0;
-    linR[i]=isFinite(r)?r:0;
-
-    // Mid/Side decomposition
-    const mid=(linL[i]+linR[i])*0.5;   // center = vocals
-    const side=Math.abs(linL[i]-linR[i])*0.5; // sides = instruments
-
-    // Instrument spectrum = boost side, reduce mid
-    // vocalSuppression=1.0 → pure side channel
-    // vocalSuppression=0.0 → normal mix
-    linInst[i]=side*(vocalSuppression)+(mid*(1-vocalSuppression*0.8));
+  const energies={};
+  for(const[name,band]of Object.entries(freqBands)){
+    const loB=Math.floor(band.lo/binHz);
+    const hiB=Math.floor(band.hi/binHz);
+    let sum=0;
+    for(let i=loB;i<=hiB&&i<freqData.length;i++)sum+=freqData[i];
+    energies[name]=(sum/(hiB-loB+1))/255;
   }
 
-  // Draw spectrum (instrument-only)
-  drawSpectrum(linInst,sampleRate);
-
-  // Compute spectral flux per band and detect onsets
+  // Onset detection per band
   const now=performance.now();
-  const sens=parseInt(document.getElementById('s-sens').value)||6;
-  // sensitivity maps 1-10 → k multiplier 3.0 → 1.0 (lower k = more triggers)
-  const k=3.5-(sens*0.22);
+  const sensitivity=parseInt(document.getElementById('beat-sensitivity').value)||5;
+  const thresh=1.8-sensitivity*0.08; // higher sensitivity = lower threshold
 
-  for(const[name,band]of Object.entries(bands)){
-    const[lo,hi]=getBinRange(band.loHz,band.hiHz,sampleRate);
-    const flux=spectralFlux(linInst,prevL?linL:null,lo,hi); // use L as prev proxy
+  for(const[name,band]of Object.entries(freqBands)){
+    const e=energies[name];
+    // Running average
+    const avg=band.history.reduce((a,b)=>a+b,0)/HISTORY_LEN;
+    band.history[band.ptr]=e;
+    band.ptr=(band.ptr+1)%HISTORY_LEN;
 
-    // Special: snare needs both body (150-300Hz) AND crack (3-8kHz) to fire
-    let effectiveFlux=flux;
-    if(name==='snare'){
-      const[crackLo,crackHi]=getBinRange(3000,8000,sampleRate);
-      const crackFlux=spectralFlux(linInst,prevL?linL:null,crackLo,crackHi);
-      const[bodyLo,bodyHi]=getBinRange(150,300,sampleRate);
-      const bodyFlux=spectralFlux(linInst,prevL?linL:null,bodyLo,bodyHi);
-      // Snare = body + crack must both be present
-      effectiveFlux=Math.min(bodyFlux,crackFlux)*2;
-    }
-
-    band.flux[band.ptr]=effectiveFlux;
-    band.ptr=(band.ptr+1)%HIST;
-
-    const thresh=adaptiveThreshold(band.flux,k);
-
-    if(effectiveFlux>thresh && effectiveFlux>0.01 && now-band.lastT>band.minGap){
-      band.lastT=now;
-      const energy=Math.min(effectiveFlux/thresh,3); // 1x-3x above threshold
-      triggerHaptic(name,energy);
+    // Onset: current energy >> recent average
+    if(e>avg*thresh && e>0.15 && now-band.lastTrigger>band.minInterval){
+      band.lastTrigger=now;
+      triggerHapticBand(name,e);
     }
   }
 
-  // Store previous spectra for next frame's flux calculation
-  prevL=new Float32Array(linL);
-  prevR=new Float32Array(linR);
-
-  // Progress
-  const cur=audioCtx.currentTime-startTime;
-  const pct=Math.min(cur/audioBuffer.duration,1);
-  document.getElementById('progress-fill').style.width=(pct*100)+'%';
-  document.getElementById('time-label').textContent=fmt(cur)+' / '+fmt(audioBuffer.duration);
-
-  // Freq bars visualization
-  updateFreqBars(linInst,sampleRate);
+  // Update freq bar visualization
+  updateFreqBars(energies);
 }
 
-function drawSpectrum(spec,sampleRate){
-  const cv=document.getElementById('spec-canvas');
-  if(!cv.width||cv.width<10){cv.width=cv.offsetWidth||440;cv.height=90;}
+function drawSpectrum(data){
+  const cv=document.getElementById('spectrum-canvas');
+  if(!cv.width||cv.width<10){cv.width=cv.offsetWidth||440;cv.height=100;}
   const ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height;
-  ctx.fillStyle='rgba(13,21,37,0.85)';ctx.fillRect(0,0,W,H);
+  ctx.clearRect(0,0,W,H);
 
-  // Show 0-8kHz (the relevant range for haptics)
-  const maxBin=Math.floor(8000/(sampleRate/FFT));
-  const bw=W/maxBin;
+  // Only show 0-4kHz range (perceptually relevant)
+  const bins=Math.min(data.length,256);
+  const bw=W/bins;
 
-  for(let i=0;i<maxBin&&i<spec.length;i++){
-    const v=Math.min(spec[i]*4,1);
-    const h=v*H*0.92;
-    // Color: blue=kick, purple=bass, yellow=snare/mid
-    const c=i<Math.floor(100/(sampleRate/FFT))
-      ?`rgba(0,229,255,${0.4+v*0.6})`
-      :i<Math.floor(250/(sampleRate/FFT))
-      ?`rgba(124,58,237,${0.4+v*0.6})`
-      :`rgba(255,204,0,${0.3+v*0.5})`;
-    ctx.fillStyle=c;
-    ctx.fillRect(i*bw,H-h,Math.max(bw-0.5,0.5),h);
+  for(let i=0;i<bins;i++){
+    const v=data[i]/255;
+    const h=v*H*0.9;
+    // Color by frequency range
+    const hue=i<30?'rgba(0,229,255':i<70?'rgba(124,58,237':'rgba(0,255,136';
+    ctx.fillStyle=`${hue},${0.5+v*0.5})`;
+    ctx.fillRect(i*bw,H-h,Math.max(bw-1,1),h);
   }
 
-  // Band markers
-  const binHz=sampleRate/FFT;
-  [[100,'rgba(0,229,255,.3)'],[250,'rgba(124,58,237,.3)'],[3000,'rgba(255,204,0,.2)']].forEach(([hz,c])=>{
-    const x=Math.floor(hz/binHz)*bw;
-    ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([3,3]);
-    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
-    ctx.setLineDash([]);
+  // Beat markers
+  ctx.strokeStyle='rgba(255,255,255,0.1)';
+  ctx.lineWidth=1;
+  [30,70,150].forEach(x=>{
+    ctx.beginPath();ctx.moveTo(x*bw,0);ctx.lineTo(x*bw,H);ctx.stroke();
   });
 }
 
 // ═══════════════════════════════════════════
 //  HAPTIC MAPPING
 // ═══════════════════════════════════════════
+// Motor zones by body region
 const ZONES={
-  chest:    [0,1,2,3],
-  belly:    [4,5,6,7],
-  core:     [8,9,10,11],
-  lower:    [12,13,14,15],
-  feet:     [16,17,18,19],
-  upBack:   [100,101,102,103],
-  midBack:  [104,105,106,107,108,109,110,111],
-  lowBack:  [112,113,114,115,116,117,118,119],
+  chest:   [0,1,2,3],        // top row front - chest
+  belly:   [4,5,6,7],        // second row front
+  core:    [8,9,10,11],      // mid front
+  lower:   [12,13,14,15],    // lower front
+  feet:    [16,17,18,19],    // bottom front
+  upperBack:[100,101,102,103],
+  midBack: [104,105,106,107,108,109,110,111],
+  lowerBack:[112,113,114,115,116,117,118,119],
 };
 
 let waveStep=0;
+let lastHapticTime=0;
 
-async function triggerHaptic(name,energy){
-  const intensity=Math.min(
-    Math.round(parseInt(document.getElementById('s-intensity').value)*Math.min(energy,1.8)),100);
-  const mode=document.getElementById('mode').value;
-  let motors=[], dur=150, logCls='', logTxt='';
+async function triggerHapticBand(band,energy){
+  const intensity=Math.round(parseInt(document.getElementById('haptic-intensity').value)*energy*1.3);
+  const clampedI=Math.min(Math.max(intensity,20),100);
+  const mode=document.getElementById('haptic-mode').value;
+  const spread=document.getElementById('spread-mode').value;
 
-  if(name==='kick'){
-    logCls='k'; logTxt='🥁 底鼓';
-    dur=220;
-    if(mode==='dance'){
-      // Dance: chest + upback hard hit, ripple downward
-      motors=[...ZONES.chest,...ZONES.upBack];
-      // Schedule ripple
-      setTimeout(()=>sendHaptic(buildShakePkt([...ZONES.belly,...ZONES.midBack],Math.round(intensity*0.6),120)),80);
+  let motors=[], duration=120, logClass='', logText='';
+
+  if(band==='kick'){
+    // Kick drum: hit chest hard, ripple out
+    logClass='kick'; logText='🥁 鼓点';
+    if(mode==='immersive'){
+      motors=[...ZONES.chest,...ZONES.upperBack];
+      duration=200;
     } else if(mode==='bass'){
-      // Bass mode: full body low-frequency hit
-      motors=[...ZONES.chest,...ZONES.belly,...ZONES.core,...ZONES.upBack,...ZONES.midBack];
-      dur=280;
+      motors=[...ZONES.chest,...ZONES.belly,...ZONES.core];
+      duration=250;
     } else {
-      // Game: rumble chest
-      motors=[...ZONES.chest,...ZONES.upBack,...ZONES.belly];
+      if(spread==='center') motors=[...ZONES.chest,...ZONES.upperBack];
+      else if(spread==='wave') motors=spreadWave();
+      else motors=randomZone();
     }
-
-  } else if(name==='bass'){
-    logCls='b'; logTxt='🎸 贝斯';
-    dur=180;
+  } else if(band==='bass'){
+    logClass='bass'; logText='🎸 Bass';
     if(mode==='bass'){
-      // Wave: bottom-up
-      waveStep=(waveStep+1)%3;
-      const waves=[[...ZONES.lower,...ZONES.lowBack],[...ZONES.core,...ZONES.midBack],[...ZONES.belly,...ZONES.upBack]];
-      motors=waves[waveStep];
+      motors=[...ZONES.chest,...ZONES.belly,...ZONES.core,...ZONES.midBack];
+      duration=180;
     } else {
       motors=[...ZONES.belly,...ZONES.midBack];
+      duration=150;
     }
-
-  } else if(name==='snare'){
-    logCls='s'; logTxt='🪘 军鼓';
-    dur=100;
-    if(mode==='dance'){
-      // Snare: sharp hit on shoulders/upper back
-      motors=[...ZONES.upBack,...ZONES.chest.slice(0,2)];
-    } else if(mode==='game'){
-      // Game: mid-body punch
+  } else if(band==='mid'){
+    logText='🎵 中频';
+    if(mode==='immersive'){
       motors=[...ZONES.core,...ZONES.midBack];
+      duration=100;
     } else {
-      motors=[...ZONES.upBack];
+      motors=[...ZONES.belly,...ZONES.core];
+      duration=80;
     }
+  } else if(band==='hi'){
+    logText='✨ 高频';
+    motors=[...ZONES.chest.slice(0,2),...ZONES.upperBack.slice(0,2)];
+    duration=60;
   }
 
-  if(!motors.length)return;
-  flashBeatMap(motors,name);
-  document.getElementById('beat-log').textContent=logTxt+' · 强度'+intensity;
-  document.getElementById('beat-log').className='beat-log '+logCls;
-  await sendHaptic(buildShakePkt(motors,intensity,dur));
+  if(motors.length===0)return;
+
+  // Flash beat map
+  flashBeatMap(motors, band);
+  document.getElementById('beat-log').textContent=logText+' · 强度'+clampedI;
+  document.getElementById('beat-log').className='beat-log '+logClass;
+
+  // Send haptic
+  const pkt=buildShake(motors,clampedI,duration);
+  await sendHaptic(pkt);
+}
+
+// Wave spread: alternating rows
+function spreadWave(){
+  waveStep=(waveStep+1)%5;
+  const rowFront=Object.values(ZONES).filter((_,i)=>i<5);
+  const rowBack=Object.values(ZONES).filter((_,i)=>i>=5);
+  const allRows=[ZONES.chest,ZONES.belly,ZONES.core,ZONES.lower,ZONES.feet];
+  return [...allRows[waveStep],...(waveStep<3?ZONES.upperBack:ZONES.lowerBack)];
+}
+
+function randomZone(){
+  const keys=Object.keys(ZONES);
+  return ZONES[keys[Math.floor(Math.random()*keys.length)]];
 }
 
 // ═══════════════════════════════════════════
-//  VISUALIZATION
+//  BEAT MAP VISUALIZATION
 // ═══════════════════════════════════════════
 function buildBeatMap(){
-  const c=document.getElementById('beat-map');
-  c.innerHTML='';
-  for(let row=0;row<5;row++)
+  const container=document.getElementById('beat-map');
+  container.innerHTML='';
+  for(let row=0;row<5;row++){
     for(let col=0;col<8;col++){
-      const m=col<4?row*4+col:100+row*4+(col-4);
-      const el=document.createElement('div');
-      el.className='bc '+(col<4?'f':'b');
-      el.id='bc'+m;
-      el.textContent=m<100?m:(m-100);
-      c.appendChild(el);
+      const mIdx=col<4?row*4+col:100+row*4+(col-4);
+      const cell=document.createElement('div');
+      cell.className='beat-cell '+(col<4?'front':'back');
+      cell.id='bc-'+mIdx;
+      cell.textContent=mIdx<100?mIdx:(mIdx-100);
+      container.appendChild(cell);
     }
+  }
 }
 
 const flashTimers=new Map();
-function flashBeatMap(motors,name){
-  const cls=name==='kick'?'ak':name==='bass'?'ab':'as';
+function flashBeatMap(motors,band){
+  const cls=band==='kick'?'active-low':band==='bass'?'active-mid':'active-hi';
   for(const m of motors){
-    const el=document.getElementById('bc'+m);
+    const el=document.getElementById('bc-'+m);
     if(!el)continue;
     el.classList.add(cls);
     clearTimeout(flashTimers.get(m));
-    flashTimers.set(m,setTimeout(()=>el.classList.remove(cls),160));
+    flashTimers.set(m,setTimeout(()=>el.classList.remove(cls),150));
   }
 }
 
+// ═══════════════════════════════════════════
+//  FREQ BARS
+// ═══════════════════════════════════════════
 function buildFreqBars(){
-  const c=document.getElementById('freq-bars');c.innerHTML='';
-  for(let i=0;i<40;i++){
-    const b=document.createElement('div');
-    b.className='fb '+(i<8?'k':i<20?'bx':'s');
-    b.id='fb'+i;c.appendChild(b);
+  const c=document.getElementById('freq-bars');
+  c.innerHTML='';
+  for(let i=0;i<32;i++){
+    const bar=document.createElement('div');
+    bar.className='freq-bar '+(i<8?'low':i<18?'mid':'hi');
+    bar.id='fb-'+i;
+    c.appendChild(bar);
   }
 }
 
-function updateFreqBars(spec,sampleRate){
-  const binHz=sampleRate/FFT;
-  // Map 40 bars to 0-8kHz
-  const maxHz=8000;
-  for(let i=0;i<40;i++){
-    const hz0=i/40*maxHz, hz1=(i+1)/40*maxHz;
-    const lo=Math.floor(hz0/binHz), hi=Math.ceil(hz1/binHz);
-    let sum=0,cnt=0;
-    for(let b=lo;b<=hi&&b<spec.length;b++){sum+=spec[b];cnt++;}
-    const v=cnt?Math.min(sum/cnt*5,1):0;
-    const el=document.getElementById('fb'+i);
-    if(el)el.style.height=Math.round(v*40+2)+'px';
+function updateFreqBars(energies){
+  const keys=['kick','kick','kick','kick','kick','kick','kick','kick',
+               'bass','bass','bass','bass','bass','bass','bass','bass','bass','bass',
+               'mid','mid','mid','mid','mid','mid',
+               'hi','hi','hi','hi','hi','hi','hi','hi'];
+  for(let i=0;i<32;i++){
+    const bar=document.getElementById('fb-'+i);
+    if(!bar)continue;
+    const e=energies[keys[i]]||0;
+    bar.style.height=Math.round(e*38+2)+'px';
   }
 }
 
 // ═══════════════════════════════════════════
-//  UTILS
+//  UI HELPERS
 // ═══════════════════════════════════════════
-function setStatus(t,type=''){const el=document.getElementById('status');el.textContent=t;el.className='status-line '+(type||'');}
-function fmt(s){const m=Math.floor(s/60);return m+':'+(Math.floor(s%60)+'').padStart(2,'0');}
-function setSlider(el,valId){
-  document.getElementById(valId).textContent=el.value;
-  el.style.setProperty('--pct',(el.value-el.min)/(el.max-el.min)*100+'%');
+function setStatus(t,type=''){
+  const el=document.getElementById('status');
+  el.textContent=t; el.className='status-line '+(type||'');
+}
+function formatTime(s){
+  const m=Math.floor(s/60);
+  return m+':'+(Math.floor(s%60)+'').padStart(2,'0');
+}
+function updateIntensity(v){
+  document.getElementById('intensity-val').textContent=v;
+  document.getElementById('haptic-intensity').style.setProperty('--val',(v-20)/80*100+'%');
+}
+function updateSensitivity(v){
+  document.getElementById('sensitivity-val').textContent=v;
+  document.getElementById('beat-sensitivity').style.setProperty('--val',(v-1)/9*100+'%');
 }
 
+// Drag and drop
 const uz=document.getElementById('upload-zone');
 uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag');});
-uz.addEventListener('dragleave',()=>uz.classList.remove('drag'));
-uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag');if(e.dataTransfer.files[0])loadAudio(e.dataTransfer.files[0]);});
+uz.addEventListener('dragleave',e=>uz.classList.remove('drag'));
+uz.addEventListener('drop',e=>{
+  e.preventDefault();uz.classList.remove('drag');
+  if(e.dataTransfer.files[0])loadAudio(e.dataTransfer.files[0]);
+});
 
+// Init
 buildBeatMap();
 buildFreqBars();
 </script>
