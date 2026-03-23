@@ -1115,20 +1115,19 @@ let hostConns=[]; // host: list of guest connections
 let guestConn=null; // guest: connection to host
 let isGuest=false;
 
+const ICE_SERVERS={iceServers:[
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
+  {urls:'turn:openrelay.metered.ca:80',   username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443',  username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
+]};
+
 function initPeer(){
   if(peer&&!peer.destroyed)return;
   const id='TG-'+Math.random().toString(36).substr(2,6).toUpperCase();
   document.getElementById('my-room-code').textContent='生成中...';
-  peer=new Peer(id,{
-    debug:0,
-    config:{
-      iceServers:[
-        {urls:'stun:stun.l.google.com:19302'},
-        {urls:'stun:stun1.l.google.com:19302'},
-        {urls:'stun:global.stun.twilio.com:3478'}
-      ]
-    }
-  });
+  peer=new Peer(id,{debug:0,config:ICE_SERVERS});
   peer.on('open',id=>{
     document.getElementById('my-room-code').textContent=id.replace('TG-','');
     log('房间码就绪：'+id.replace('TG-',''),'ok');
@@ -1193,13 +1192,7 @@ function connectAsGuest(){
       // Peer is not ready - reinit then connect
       if(peer&&!peer.destroyed)peer.destroy();
       peer=null;
-      const tmpPeer=new Peer(undefined,{
-        debug:0,
-        config:{iceServers:[
-          {urls:'stun:stun.l.google.com:19302'},
-          {urls:'stun:stun1.l.google.com:19302'}
-        ]}
-      });
+      const tmpPeer=new Peer(undefined,{debug:0,config:ICE_SERVERS});
       tmpPeer.on('open',()=>{
         peer=tmpPeer;
         attemptConn(hostId);
