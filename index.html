@@ -180,27 +180,6 @@
     .peer-status{font-size:10px;color:var(--green);}
     .remote-info{font-size:11px;color:var(--dim);text-align:center;padding:8px;letter-spacing:1px;}
 
-    /* Ball sensor module */
-    .shake-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;display:none;}
-    .shake-panel.show{display:block;}
-    .shake-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-    .shake-title{font-size:12px;letter-spacing:2px;color:var(--text);text-transform:uppercase;}
-    .shake-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;}
-    .toggle-track{width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);position:relative;transition:background .2s;}
-    .toggle-track.on{background:var(--accent2);border-color:var(--accent2);}
-    .toggle-thumb{width:14px;height:14px;border-radius:50%;background:white;position:absolute;top:2px;left:2px;transition:left .2s;}
-    .toggle-track.on .toggle-thumb{left:18px;}
-    .ball-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px;background:var(--bg3);}
-    #ball-canvas{display:block;width:100%;touch-action:none;}
-    .ball-hint{text-align:center;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px;}
-    .shake-settings{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
-    .shake-setting{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
-    .shake-setting label{font-size:10px;color:var(--dim);letter-spacing:1px;display:block;margin-bottom:4px;text-transform:uppercase;}
-    .shake-setting select{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;cursor:pointer;}
-    .shake-setting select option{background:var(--bg3);}
-    .shake-log{font-size:11px;color:var(--dim);text-align:center;min-height:16px;letter-spacing:1px;}
-    .shake-log.triggered{color:var(--green);}
-    .shake-log.error{color:var(--red);}
 
     /* Log */
     .log-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
@@ -395,38 +374,6 @@
     </div>
   </div>
 
-  <!-- Ball sensor panel -->
-  <div class="shake-panel" id="shake-panel">
-    <div class="shake-header">
-      <span class="shake-title">🔵 滚球感应</span>
-      <div class="shake-toggle" onclick="toggleShake()">
-        <div class="toggle-track" id="shake-track"><div class="toggle-thumb"></div></div>
-        <span style="font-size:10px;color:var(--dim)" id="shake-toggle-label">关闭</span>
-      </div>
-    </div>
-    <!-- Ball canvas - same size as body map -->
-    <div class="ball-hint" style="margin-bottom:8px;color:var(--dim);font-size:10px;text-align:center;letter-spacing:1px">球在触控体图上滚动 · 切换到「触控体图」标签可看到球</div>
-    <div class="shake-settings">
-      <div class="shake-setting">
-        <label>球的大小</label>
-        <select id="ball-size">
-          <option value="1.2">小（精准）</option>
-          <option value="1.8" selected>中（推荐）</option>
-          <option value="2.5">大（宽泛）</option>
-        </select>
-      </div>
-      <div class="shake-setting">
-        <label>振动强度</label>
-        <select id="ball-intensity">
-          <option value="30">轻柔</option>
-          <option value="60" selected>中等</option>
-          <option value="90">强烈</option>
-        </select>
-      </div>
-    </div>
-    <div class="shake-log" id="shake-log">开启后倾斜手机体验滚球振动</div>
-  </div>
-
   <!-- Log -->
   <div class="log-wrap">
     <div class="log-header">
@@ -550,21 +497,13 @@ async function addDevice(){
       filters:[{namePrefix:'Truegear'}],optionalServices:[UART_SVC]
     });
     // Check if already added
-    if(devices.find(d=>d.id===ble.id)){
-      log('该设备已添加','warn');
-      // Restore status to current state
-      const connected=getConnectedDevices();
-      setStatus(connected.length>0?'已连接：'+connected[0].name:'添加设备开始使用','');
-      return;
-    }
-    const entry={id:ble.id,name:ble.name,device:ble,rxChar:null,status:'reconnecting',
-                 reconnectTimer:null,reconnectAttempts:0,everConnected:false};
+    if(devices.find(d=>d.id===ble.id)){log('该设备已添加','warn');return;}
+    const entry={id:ble.id,name:ble.name,device:ble,rxChar:null,status:'reconnecting',reconnectTimer:null,reconnectAttempts:0,everConnected:false};
     devices.push(entry);
     renderDevices();
     await connectDevice(entry);
   }catch(err){
-    const connected=getConnectedDevices();
-    setStatus(connected.length>0?'已连接：'+connected[0].name:'未选择设备','');
+    setStatus('未选择设备','');
     if(err.name!=='NotFoundError')log('错误：'+err.message,'error');
   }
 }
@@ -580,53 +519,38 @@ async function connectDevice(entry){
     await txChar.startNotifications();
     txChar.addEventListener('characteristicvaluechanged',e=>onNotify(e,entry));
     await sendRawTo(entry.rxChar,HANDSHAKE,entry.id);
-    entry.status='connected';
-    entry.reconnectAttempts=0;
-    entry.everConnected=true;  // mark that we had a successful connection
+    entry.status='connected'; entry.reconnectAttempts=0; entry.everConnected=true;
     if(!primaryDeviceId)primaryDeviceId=entry.id;
-    entry.device.addEventListener('gattserverdisconnected',
-      ()=>onDeviceDisconnected(entry),{once:true});
+    entry.device.addEventListener('gattserverdisconnected',()=>onDeviceDisconnected(entry),{once:true});
     renderDevices(); updateConnSummary(); enableControls();
     log('✅ 已连接：'+entry.name,'ok');
     setStatus('已连接：'+entry.name,'ok');
-    setTimeout(()=>buildBodyMap(),100);
+    buildBodyMap();
     renderLoadedEffects(); renderFavorites();
-    showShakePanel();
   }catch(err){
-    entry.status='disconnected'; renderDevices();
-    clearDeviceQueue(entry.id);
-    log('连接失败：'+entry.name+' — '+err.message,'error');
-    setStatus('连接失败，请重试','error');
+    log('连接失败：'+entry.name+' '+err.message,'error');
+    // 首次连接失败不自动重连
   }
 }
 
 function onDeviceDisconnected(entry){
   entry.rxChar=null; entry.status='reconnecting';
-  clearDeviceQueue(entry.id); // clear any pending writes
   log('设备断开：'+entry.name,'warn');
   renderDevices(); updateConnSummary();
   if(getConnectedDevices().length===0){
-    setStatus('设备已断开','error'); disableControls(); setTimeout(()=>buildBodyMap(),50);
+    setStatus('设备已断开','error'); disableControls(); buildBodyMap();
   }
-  // Only auto-reconnect if we previously had a successful connection
-  if(entry.everConnected){
-    scheduleReconnect(entry);
-  }
+  if(entry.everConnected) scheduleReconnect(entry);
 }
 
 function scheduleReconnect(entry){
-  // Don't reconnect if device was manually removed
-  if(!devices.find(d=>d.id===entry.id))return;
   if(entry.reconnectAttempts>=MAX_RECONNECT){
     entry.status='disconnected'; renderDevices();
     log('⚠ 重连失败：'+entry.name,'error'); return;
   }
   entry.reconnectAttempts++;
-  const wait=RECONNECT_DELAY*entry.reconnectAttempts; // backoff: 2s, 4s, 6s...
-  log(`重连 ${entry.name} (${entry.reconnectAttempts}/${MAX_RECONNECT}) 等待${wait/1000}s...`,'warn');
-  entry.reconnectTimer=setTimeout(()=>{
-    if(devices.find(d=>d.id===entry.id))connectDevice(entry);
-  },wait);
+  log(`重连 ${entry.name} (${entry.reconnectAttempts}/${MAX_RECONNECT})...`,'warn');
+  entry.reconnectTimer=setTimeout(()=>connectDevice(entry),RECONNECT_DELAY);
 }
 
 function removeDevice(id){
@@ -718,38 +642,19 @@ async function drainQueue(deviceId){
   const q=writeQueues.get(deviceId);
   if(!q||q.running)return;
   q.running=true;
-  try{
-    while(q.queue.length>0){
-      // Drop stale motor bursts if queue backed up (keep latest 1)
-      while(q.queue.length>2){
-        const dropped=q.queue.shift();
-        dropped.resolve(); // resolve so callers don't hang
+  while(q.queue.length>0){
+    // Drop stale motor bursts (keep only latest if queue backed up)
+    if(q.queue.length>3)q.queue.splice(0,q.queue.length-1);
+    const{rxChar,data,resolve,reject}=q.queue.shift();
+    try{
+      for(let i=0;i<data.length;i+=128){
+        const chunk=data.slice(i,i+128);
+        await rxChar.writeValueWithoutResponse(chunk);
+        if(i+128<data.length)await delay(20);
       }
-      const{rxChar,data,resolve,reject}=q.queue.shift();
-      try{
-        for(let i=0;i<data.length;i+=128){
-          const chunk=data.slice(i,i+128);
-          await rxChar.writeValueWithoutResponse(chunk);
-          if(i+128<data.length)await delay(20);
-        }
-        resolve();
-      }catch(e){
-        resolve(); // resolve even on error so Promise chain doesn't hang
-      }
-    }
-  }finally{
-    q.running=false;
-    // If new items were added while we were running, drain again
-    if(q.queue.length>0)drainQueue(deviceId);
+      resolve();
+    }catch(e){reject(e);}
   }
-}
-
-function clearDeviceQueue(deviceId){
-  const q=writeQueues.get(deviceId);
-  if(!q)return;
-  // Resolve all pending so no hanging Promises
-  for(const item of q.queue)item.resolve();
-  q.queue=[];
   q.running=false;
 }
 
@@ -817,6 +722,23 @@ function stopHeartbeat(){if(!heartbeatTimer)return;clearInterval(heartbeatTimer)
 //  BODY MAP
 // ═══════════════════════════════════════════════════════
 // ── Touch canvas body map (same grid as ball sensor) ────────
+// Grid constants (shared by touch canvas)
+const BALL_COLS=8, BALL_ROWS=5, BALL_SQ=44, BALL_GAP=8;
+const BALL_GRID_X=[16,68,120,172,224,276,328,380];
+const BALL_GRID_Y=[14,66,118,170,222];
+const BALL_CW=440, BALL_CH=280;
+
+// Rounded rect helper
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
 let touchIntensity=70;
 const activeMotors=new Map();
 const flashSet=new Set();
@@ -826,9 +748,8 @@ function initTouchCanvas(){
   if(!cv)return;
   cv.width=BALL_CW; cv.height=BALL_CH;
   cv.style.width='100%'; cv.style.height='auto';
-  // Only attach events once
-  if(!cv._eventsAttached){cv._eventsAttached=true;attachTouchEvents(cv);}
   drawTouchGrid();
+  attachTouchEvents(cv);
 }
 
 function drawTouchGrid(){
@@ -1174,7 +1095,6 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
-  if(name==='bodymap') requestAnimationFrame(()=>initTouchCanvas());
 }
 
 function log(msg,type='info'){
@@ -1344,195 +1264,9 @@ function setRemoteStatus(txt){
 }
 
 
-// ═══════════════════════════════════════════════════════
-//  BALL SENSOR (滚球感应) — reuses touch grid exactly
-// ═══════════════════════════════════════════════════════
-let shakeEnabled=false;
-let orientationListener=null;
-let ballAnimFrame=null;
-
-const ball={x:0.5,y:0.5,vx:0,vy:0,gx:0,gy:0};
-
-// Mirror mapping for back side: canvas col 4→motor 3, 5→2, 6→1, 7→0
-// so the body feels continuous front-to-back
-function motorIndexFromCell(col,row){
-  if(col<4) return row*4+col;                  // front: 0-19
-  else      return 100+row*4+(7-col);           // back mirrored: 100-119
-}
-
-function toggleShake(){
-  if(!shakeEnabled){
-    if(typeof DeviceOrientationEvent!=='undefined'&&
-       typeof DeviceOrientationEvent.requestPermission==='function'){
-      DeviceOrientationEvent.requestPermission()
-        .then(s=>{if(s==='granted')enableShake();else log('方向权限被拒绝','error');})
-        .catch(e=>log('权限失败：'+e.message,'error'));
-    } else enableShake();
-  } else disableShake();
-}
-
-function enableShake(){
-  shakeEnabled=true;
-  document.getElementById('shake-track').classList.add('on');
-  document.getElementById('shake-toggle-label').textContent='开启';
-  document.getElementById('shake-toggle-label').style.color='var(--green)';
-  orientationListener=e=>{
-    const gamma=e.gamma||0;
-    const beta=(e.beta||0)-45;
-    ball.gx=Math.max(-1,Math.min(1,gamma/40));
-    ball.gy=Math.max(-1,Math.min(1,beta/55));
-  };
-  window.addEventListener('deviceorientation',orientationListener);
-  // Reset ball to center
-  ball.x=0.5;ball.y=0.5;ball.vx=0;ball.vy=0;
-  startBallLoop();
-  log('🔵 滚球感应已开启','ok');
-}
-
-function disableShake(){
-  shakeEnabled=false;
-  document.getElementById('shake-track').classList.remove('on');
-  document.getElementById('shake-toggle-label').textContent='关闭';
-  document.getElementById('shake-toggle-label').style.color='var(--dim)';
-  if(orientationListener)window.removeEventListener('deviceorientation',orientationListener);
-  if(ballAnimFrame){cancelAnimationFrame(ballAnimFrame);ballAnimFrame=null;}
-  // Stop all motors triggered by ball
-  stopAllMotors();
-  // Redraw grid without ball
-  drawTouchGrid();
-  document.getElementById('shake-log').textContent='开启后倾斜手机体验滚球振动';
-  document.getElementById('shake-log').className='shake-log';
-}
-
-function getBallRadius(){
-  const sz=parseFloat(document.getElementById('ball-size').value)||1.8;
-  return BALL_SQ*sz*0.36;
-}
-
-function startBallLoop(){
-  if(ballAnimFrame)cancelAnimationFrame(ballAnimFrame);
-  function loop(){
-    if(!shakeEnabled){ballAnimFrame=null;return;}
-    // Physics
-    ball.vx+=ball.gx*0.016; ball.vy+=ball.gy*0.016;
-    ball.vx*=0.90;           ball.vy*=0.90;
-    ball.x+=ball.vx;         ball.y+=ball.vy;
-    const br=getBallRadius();
-    const bxMin=br/BALL_CW, bxMax=1-br/BALL_CW;
-    const byMin=br/BALL_CH, byMax=1-br/BALL_CH;
-    if(ball.x<bxMin){ball.x=bxMin;ball.vx*=-0.6;}
-    if(ball.x>bxMax){ball.x=bxMax;ball.vx*=-0.6;}
-    if(ball.y<byMin){ball.y=byMin;ball.vy*=-0.6;}
-    if(ball.y>byMax){ball.y=byMax;ball.vy*=-0.6;}
-
-    // Find which motor cell the ball center is over
-    const bxPx=ball.x*BALL_CW, byPx=ball.y*BALL_CH;
-    const br2=getBallRadius()+BALL_SQ*0.15; // slight extra reach
-    const newActive=new Set();
-    for(let row=0;row<BALL_ROWS;row++){
-      for(let col=0;col<BALL_COLS;col++){
-        const cx=BALL_GRID_X[col]+BALL_SQ/2;
-        const cy=BALL_GRID_Y[row]+BALL_SQ/2;
-        if(Math.sqrt((bxPx-cx)**2+(byPx-cy)**2)<=br2)
-          newActive.add(motorIndexFromCell(col,row));
-      }
-    }
-
-    // Stop motors ball has left
-    for(const[mIdx,id]of activeMotors){
-      if(!newActive.has(mIdx)){clearInterval(id);activeMotors.delete(mIdx);}
-    }
-    // Start motors ball just entered
-    for(const mIdx of newActive){
-      if(!activeMotors.has(mIdx)){
-        const intensity=parseInt(document.getElementById('ball-intensity').value)||60;
-        const id=setInterval(()=>fireBurstAt(mIdx,intensity),150);
-        activeMotors.set(mIdx,id);
-        fireBurstAt(mIdx,intensity); // immediate first burst
-      }
-    }
-
-    // Draw grid + ball overlay
-    drawTouchGrid();
-    drawBallOverlay(bxPx,byPx,getBallRadius());
-
-    // Update log
-    const sl=document.getElementById('shake-log');
-    if(newActive.size>0){
-      const f=[...newActive].filter(m=>m<100).length;
-      const b=[...newActive].filter(m=>m>=100).length;
-      sl.textContent=`🔵 前${f}后${b}个马达振动`;
-      sl.className='shake-log triggered';
-    } else {
-      sl.textContent='倾斜手机滚动小球...';
-      sl.className='shake-log';
-    }
-
-    ballAnimFrame=requestAnimationFrame(loop);
-  }
-  loop();
-}
-
-// Separate intensity-aware burst (ball uses its own intensity setting)
-async function fireBurstAt(mIdx,intensity){
-  const pkt=buildMotorPacket(mIdx,intensity);
-  if(isGuest&&guestConn&&guestConn.open){
-    guestConn.send({type:'motor',binary:Array.from(new Uint8Array(pkt)),label:'球'+mIdx});
-    return;
-  }
-  try{await sendToAll(Array.from(pkt));}catch(e){}
-}
-
-// Draw ball on top of the touch grid canvas
-function drawBallOverlay(bxPx,byPx,br){
-  const cv=document.getElementById('ball-canvas')||document.getElementById('touch-canvas');
-  if(!cv)return;
-  const ctx=cv.getContext('2d');
-
-  // Outer glow
-  const glowG=ctx.createRadialGradient(bxPx,byPx,0,bxPx,byPx,br*2.8);
-  glowG.addColorStop(0,'rgba(180,120,255,0.2)');
-  glowG.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=glowG;
-  ctx.beginPath();ctx.arc(bxPx,byPx,br*2.8,0,Math.PI*2);ctx.fill();
-
-  // Shadow
-  ctx.fillStyle='rgba(0,0,0,0.22)';
-  ctx.beginPath();ctx.ellipse(bxPx+br*0.1,byPx+br*0.2,br*0.8,br*0.3,0,0,Math.PI*2);ctx.fill();
-
-  // Ball body
-  const bg=ctx.createRadialGradient(bxPx-br*0.3,byPx-br*0.3,0,bxPx,byPx,br);
-  bg.addColorStop(0,'rgba(255,255,255,0.95)');
-  bg.addColorStop(0.3,'rgba(200,160,255,0.9)');
-  bg.addColorStop(0.7,'rgba(124,58,237,0.88)');
-  bg.addColorStop(1,'rgba(70,15,160,0.92)');
-  ctx.fillStyle=bg;
-  ctx.beginPath();ctx.arc(bxPx,byPx,br,0,Math.PI*2);ctx.fill();
-
-  // Specular
-  ctx.fillStyle='rgba(255,255,255,0.55)';
-  ctx.beginPath();ctx.ellipse(bxPx-br*0.27,byPx-br*0.27,br*0.27,br*0.17,-0.4,0,Math.PI*2);ctx.fill();
-
-  // Speed trail
-  const spd=Math.sqrt(ball.vx**2+ball.vy**2);
-  if(spd>0.003){
-    const tx=bxPx-ball.vx*BALL_CW*9, ty=byPx-ball.vy*BALL_CH*9;
-    const tr=ctx.createLinearGradient(tx,ty,bxPx,byPx);
-    tr.addColorStop(0,'rgba(124,58,237,0)');
-    tr.addColorStop(1,`rgba(180,100,255,${Math.min(spd*18,0.4)})`);
-    ctx.strokeStyle=tr; ctx.lineWidth=br*1.0; ctx.lineCap='round';
-    ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(bxPx,byPx);ctx.stroke();
-  }
-}
-
-function showShakePanel(){
-  document.getElementById('shake-panel').classList.add('show');
-}
-
-
 
 // Init
-setTimeout(()=>buildBodyMap(),200);
+buildBodyMap();
 buildMotorPicker();
 renderFavorites();
 renderDevices();
