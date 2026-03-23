@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Truegear Control</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
       --bg:#04060f; --bg2:#080d1a; --bg3:#0d1525; --border:#1a2540;
@@ -148,6 +149,36 @@
     .btn-remove-track{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 4px;}
     .btn-remove-track:hover{color:var(--red);}
     .editor-actions{display:flex;gap:6px;margin-top:4px;}
+
+    /* Remote control */
+    .remote-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;display:none;}
+    .remote-panel.show{display:block;}
+    .remote-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .remote-title{font-size:12px;letter-spacing:2px;color:var(--text);text-transform:uppercase;}
+    .remote-status{font-size:10px;padding:3px 10px;border-radius:10px;border:1px solid var(--border);color:var(--dim);letter-spacing:1px;}
+    .remote-status.linked{border-color:var(--green);color:var(--green);}
+    .remote-tabs{display:flex;gap:4px;margin-bottom:12px;}
+    .rtab{flex:1;padding:7px;text-align:center;border-radius:6px;font-size:11px;letter-spacing:1px;
+      border:1px solid var(--border);background:var(--bg3);color:var(--dim);cursor:pointer;transition:all .2s;text-transform:uppercase;}
+    .rtab.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);}
+    .rpanel{display:none;} .rpanel.active{display:block;}
+    .room-code-display{
+      text-align:center;padding:16px;background:var(--bg3);border-radius:10px;
+      border:1px solid var(--border);margin-bottom:10px;
+    }
+    .code-label{font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:6px;text-transform:uppercase;}
+    .code-value{font-family:var(--font-hd);font-size:32px;font-weight:900;letter-spacing:8px;color:var(--accent);text-shadow:0 0 16px var(--accent);}
+    .code-hint{font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px;}
+    .remote-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+      color:var(--text);font-family:var(--font-hd);font-size:20px;padding:12px;outline:none;
+      text-align:center;letter-spacing:6px;text-transform:uppercase;margin-bottom:8px;}
+    .remote-input:focus{border-color:var(--accent);}
+    .remote-peers{display:flex;flex-direction:column;gap:5px;margin-top:6px;}
+    .peer-chip{display:flex;align-items:center;justify-content:space-between;
+      background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;}
+    .peer-name{font-size:12px;color:var(--text);}
+    .peer-status{font-size:10px;color:var(--green);}
+    .remote-info{font-size:11px;color:var(--dim);text-align:center;padding:8px;letter-spacing:1px;}
 
     /* Shake module */
     .shake-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;display:none;}
@@ -333,6 +364,40 @@
         <button class="btn-sm btn-save" onclick="editorSave()">⭐ 保存到收藏</button>
         <button class="btn-sm btn-del"  onclick="editorClear()">清空</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Remote control panel -->
+  <div class="remote-panel show" id="remote-panel">
+    <div class="remote-header">
+      <span class="remote-title">🌐 远程联机</span>
+      <span class="remote-status" id="remote-status">未连接</span>
+    </div>
+    <div class="remote-tabs">
+      <div class="rtab active" onclick="switchRTab('host')">主机模式</div>
+      <div class="rtab"        onclick="switchRTab('guest')">访客模式</div>
+    </div>
+
+    <!-- Host mode -->
+    <div class="rpanel active" id="rpanel-host">
+      <div class="room-code-display">
+        <div class="code-label">你的房间码</div>
+        <div class="code-value" id="my-room-code">······</div>
+        <div class="code-hint">将此码发给对方，对方即可远程控制你的体感服</div>
+      </div>
+      <button class="btn-sm btn-send" onclick="copyRoomCode()" style="width:100%;margin-bottom:8px">📋 复制房间码</button>
+      <div class="remote-peers" id="host-peers">
+        <div class="remote-info">等待访客连接...</div>
+      </div>
+    </div>
+
+    <!-- Guest mode -->
+    <div class="rpanel" id="rpanel-guest">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;letter-spacing:1px;">输入对方的房间码</div>
+      <input class="remote-input" id="guest-code-input" maxlength="6" placeholder="XXXXXX"
+             oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+      <button class="btn-sm btn-send" onclick="connectAsGuest()" id="btn-guest-connect" style="width:100%">连接主机</button>
+      <div class="remote-info" id="guest-info" style="margin-top:6px"></div>
     </div>
   </div>
 
@@ -682,15 +747,15 @@ function stopHeartbeat(){if(!heartbeatTimer)return;clearInterval(heartbeatTimer)
 let currentSide='front', touchIntensity=70;
 const activeMotors=new Map();
 const SQ=58; // square size
-const GAP=10; // gap between squares
-const GRID_X=[20,98,176,254]; // left edges of 4 columns (each col = SQ+GAP apart from center)
-const GRID_Y=[18,90,162,234,306]; // top edges of 5 rows
+const GAP=16; // gap between squares
+const GRID_X=[80,154,228,302]; // centered in 440px viewBox
+const GRID_Y=[3,77,151,225,299]; // centered in 360px viewBox
 
 function motorPos(i){const row=Math.floor(i/4),col=i%4;return{x:GRID_X[col],y:GRID_Y[row]};}
 
 function buildBodyMap(){
   const g=document.getElementById('motor-zones'); g.innerHTML='';
-  const connected=getConnectedDevices().length>0;
+  const connected=getConnectedDevices().length>0||isGuest;
   for(let i=0;i<20;i++){
     const mIdx=currentSide==='front'?i:(i+100);
     const pos=motorPos(i);
@@ -714,7 +779,16 @@ function buildBodyMap(){
   }
 }
 
+async function sendEffectObj(effObj,label,btnId){
+  return sendEffectObjWithRemote(effObj,label,btnId);
+}
+
 async function fireBurst(mIdx){
+  if(isGuest&&guestConn&&guestConn.open){
+    const pkt=buildMotorPacket(mIdx,touchIntensity);
+    guestConn.send({type:'motor',binary:Array.from(new Uint8Array(pkt)),label:'马达'+mIdx});
+    return;
+  }
   const connected=getConnectedDevices();
   if(!connected.length)return;
   try{const pkt=new Uint8Array(buildMotorPacket(mIdx,touchIntensity));await sendToAll(Array.from(pkt));}catch(e){}
@@ -956,6 +1030,162 @@ function clearLog(){document.getElementById('log-body').innerHTML='';}
 function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ═══════════════════════════════════════════════════════
+//  REMOTE CONTROL (PeerJS)
+// ═══════════════════════════════════════════════════════
+let peer=null;
+let hostConns=[]; // host: list of guest connections
+let guestConn=null; // guest: connection to host
+let isGuest=false;
+
+function initPeer(){
+  if(peer&&!peer.destroyed)return;
+  const id='TG-'+Math.random().toString(36).substr(2,6).toUpperCase();
+  peer=new Peer(id,{debug:0});
+  peer.on('open',id=>{
+    document.getElementById('my-room-code').textContent=id.replace('TG-','');
+    log('房间码就绪：'+id.replace('TG-',''),'ok');
+  });
+  peer.on('connection',conn=>{
+    conn.on('open',()=>{
+      hostConns.push(conn);
+      log('👤 访客已连接：'+conn.peer,'ok');
+      updateHostPeers();
+      setRemoteStatus('已连接 '+hostConns.length+' 位访客');
+    });
+    conn.on('data',data=>handleRemoteData(data));
+    conn.on('close',()=>{
+      hostConns=hostConns.filter(c=>c!==conn);
+      log('👤 访客已断开','warn');
+      updateHostPeers();
+      setRemoteStatus(hostConns.length>0?'已连接 '+hostConns.length+' 位访客':'未连接');
+    });
+  });
+  peer.on('error',e=>log('联机错误：'+e.message,'error'));
+}
+
+function connectAsGuest(){
+  const code=document.getElementById('guest-code-input').value.trim();
+  if(code.length<4){document.getElementById('guest-info').textContent='请输入完整房间码';return;}
+  if(!peer||peer.destroyed)peer=new Peer(undefined,{debug:0});
+  document.getElementById('guest-info').textContent='连接中...';
+  document.getElementById('btn-guest-connect').disabled=true;
+  const hostId='TG-'+code.toUpperCase();
+  guestConn=peer.connect(hostId,{reliable:true});
+  guestConn.on('open',()=>{
+    isGuest=true;
+    document.getElementById('guest-info').textContent='✅ 已连接主机，可以开始控制！';
+    document.getElementById('guest-info').style.color='var(--green)';
+    setRemoteStatus('访客模式·已连接');
+    log('🌐 已连接主机，远程控制模式开启','ok');
+    document.getElementById('btn-guest-connect').disabled=false;
+    // Enable all controls for guest (they send to host, not local BLE)
+    document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=false);
+    document.querySelectorAll('.effect-btn,.btn-send-loaded').forEach(b=>b.disabled=false);
+    document.getElementById('ed-btn-send').disabled=false;
+    buildBodyMap();
+  });
+  guestConn.on('close',()=>{
+    isGuest=false; guestConn=null;
+    document.getElementById('guest-info').textContent='连接已断开';
+    document.getElementById('guest-info').style.color='';
+    setRemoteStatus('未连接');
+    log('🌐 与主机的连接断开','warn');
+  });
+  guestConn.on('error',e=>{
+    document.getElementById('guest-info').textContent='连接失败：'+e.message;
+    document.getElementById('btn-guest-connect').disabled=false;
+  });
+}
+
+// Guest sends effect data to host
+async function sendRemoteEffect(binary,label){
+  if(!guestConn||!guestConn.open){log('未连接主机','error');return;}
+  guestConn.send({type:'effect',binary:Array.from(binary),label});
+  log('🌐 远程发送：'+label,'ok');
+}
+
+// Host receives and executes
+async function handleRemoteData(data){
+  if(data.type==='effect'){
+    log('🌐 收到远程指令：'+data.label,'ok');
+    const binary=new Uint8Array(data.binary);
+    await sendToAll(Array.from(binary));
+    // Visualize on host body map
+    flashMotors(data.motorIndices||[]);
+  }
+}
+
+// Override sendEffectObj to route via peer if guest
+const _origSendEffectObj=null;
+async function sendEffectObjWithRemote(effObj,label,btnId){
+  const binary=buildEffectBinary(effObj);
+  if(binary.length===0){log('特效无有效轨道','warn');return;}
+  const now=Date.now(),wait=70-(now-lastSend);
+  if(wait>0)await delay(wait); lastSend=Date.now();
+
+  const indices=[];
+  if(effObj.tracks)for(const t of effObj.tracks){if(t.action_type==='Shake'&&t.index)indices.push(...t.index);}
+
+  if(isGuest&&guestConn&&guestConn.open){
+    // Send to host via PeerJS
+    guestConn.send({type:'effect',binary:Array.from(new Uint8Array(binary)),label,motorIndices:indices});
+    log('🌐 远程→主机：'+label+' ('+binary.length+'字节)','ok');
+    flashMotors([...new Set(indices)]);
+  } else {
+    // Send locally via BLE
+    log('→ '+label+' ('+binary.length+'字节)','ok');
+    await sendToAll(binary);
+    flashMotors([...new Set(indices)]);
+  }
+  if(btnId){const btn=document.getElementById(btnId);if(btn){btn.classList.add('firing');setTimeout(()=>btn.classList.remove('firing'),400);}}
+}
+
+// Guest also sends motor burst via remote
+async function sendMotorBurstRemote(mIdx,intensity){
+  if(!isGuest||!guestConn||!guestConn.open)return;
+  const pkt=buildMotorPacket(mIdx,intensity);
+  guestConn.send({type:'motor',binary:Array.from(new Uint8Array(pkt)),label:'马达'+mIdx});
+}
+
+// Patch handleRemoteData to handle motor type too
+const _origHandleRemoteData=handleRemoteData;
+async function handleRemoteData(data){
+  if(data.type==='effect'||data.type==='motor'){
+    log('🌐 收到远程：'+(data.label||'motor'),'ok');
+    await sendToAll(data.binary);
+    if(data.motorIndices)flashMotors(data.motorIndices);
+  }
+}
+
+function updateHostPeers(){
+  const c=document.getElementById('host-peers');
+  if(hostConns.length===0){c.innerHTML='<div class="remote-info">等待访客连接...</div>';return;}
+  c.innerHTML=hostConns.map((conn,i)=>`
+    <div class="peer-chip">
+      <span class="peer-name">访客 ${i+1}</span>
+      <span class="peer-status">● 已连接</span>
+    </div>`).join('');
+}
+
+function copyRoomCode(){
+  const code=document.getElementById('my-room-code').textContent;
+  if(code==='······')return;
+  navigator.clipboard.writeText(code).then(()=>{log('房间码已复制：'+code,'ok');}).catch(()=>{});
+}
+
+function switchRTab(tab){
+  document.querySelectorAll('.rtab').forEach((t,i)=>t.classList.toggle('active',['host','guest'][i]===tab));
+  document.getElementById('rpanel-host').classList.toggle('active',tab==='host');
+  document.getElementById('rpanel-guest').classList.toggle('active',tab==='guest');
+}
+
+function setRemoteStatus(txt){
+  const el=document.getElementById('remote-status');
+  el.textContent=txt;
+  el.className='remote-status'+(txt.includes('已连接')?' linked':'');
+}
+
+// ═══════════════════════════════════════════════════════
 //  SHAKE TO TRIGGER
 // ═══════════════════════════════════════════════════════
 let shakeEnabled=false;
@@ -1100,6 +1330,7 @@ buildBodyMap();
 buildMotorPicker();
 renderFavorites();
 renderDevices();
+initPeer();
 </script>
 </body>
 </html>
