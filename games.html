@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Truegear 适配游戏</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#04060f;--bg2:#080d1a;--bg3:#0d1525;--border:#1a2540;--accent:#00e5ff;--accent2:#7c3aed;--text:#c8d8f0;--dim:#3a4a6a;--font-hd:'Orbitron',monospace;--font-mono:'Share Tech Mono',monospace;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-mono);min-height:100vh;}
+    body::before{content:'';pointer-events:none;position:fixed;inset:0;z-index:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);}
+
+    .hero{position:relative;z-index:1;padding:50px 24px 36px;text-align:center;background:linear-gradient(180deg,rgba(0,229,255,.04) 0%,transparent 100%);border-bottom:1px solid var(--border);}
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:20px;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px;text-decoration:none;margin-bottom:28px;transition:all .2s;}
+    .back-btn:hover{border-color:var(--accent);color:var(--accent);}
+    .hero-tag{font-family:var(--font-hd);font-size:11px;letter-spacing:4px;color:var(--accent);margin-bottom:14px;opacity:.7;}
+    .hero-title{font-family:var(--font-hd);font-size:clamp(22px,5vw,40px);font-weight:900;line-height:1.2;margin-bottom:14px;background:linear-gradient(135deg,#fff 0%,var(--accent) 50%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .hero-sub{color:var(--dim);font-size:13px;letter-spacing:1px;margin-bottom:24px;}
+    .hero-count{display:inline-flex;align-items:center;gap:10px;padding:10px 24px;border-radius:30px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2);font-family:var(--font-hd);font-size:32px;font-weight:900;color:var(--accent);text-shadow:0 0 20px var(--accent);}
+    .hero-count span{font-size:12px;color:var(--dim);font-family:var(--font-mono);letter-spacing:2px;}
+
+    .controls{position:sticky;top:0;z-index:10;background:rgba(4,6,15,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .search-wrap{flex:1;min-width:160px;position:relative;}
+    .search-wrap input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:8px 10px 8px 34px;outline:none;transition:border-color .2s;}
+    .search-wrap input:focus{border-color:var(--accent);}
+    .search-wrap::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;}
+    .filter-btns{display:flex;gap:4px;flex-wrap:wrap;}
+    .fbtn{padding:5px 10px;border-radius:6px;font-size:10px;letter-spacing:1px;border:1px solid var(--border);background:var(--bg2);color:var(--dim);cursor:pointer;transition:all .2s;font-family:var(--font-mono);text-transform:uppercase;}
+    .fbtn.active{background:rgba(0,229,255,.1);border-color:var(--accent);color:var(--accent);}
+    .result-count{font-size:10px;color:var(--dim);white-space:nowrap;letter-spacing:1px;}
+
+    .grid-wrap{position:relative;z-index:1;padding:16px;}
+    .games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+    @media(max-width:360px){.games-grid{grid-template-columns:repeat(2,1fr);}}
+
+    .game-card{position:relative;border-radius:10px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);cursor:pointer;transition:all .25s;aspect-ratio:460/215;}
+    .game-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 8px 24px rgba(0,229,255,.15);}
+    .game-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;}
+    .game-card:hover img{transform:scale(1.06);}
+    .game-card .overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(4,6,15,.95) 100%);opacity:0;transition:opacity .25s;display:flex;align-items:flex-end;padding:8px;}
+    .game-card:hover .overlay{opacity:1;}
+    .game-card .g-name{font-size:11px;color:white;line-height:1.3;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+    .game-card .vr-badge{position:absolute;top:5px;right:5px;background:rgba(0,229,255,.15);border:1px solid rgba(0,229,255,.3);border-radius:4px;padding:2px 5px;font-size:8px;color:var(--accent);letter-spacing:1px;backdrop-filter:blur(4px);}
+    .game-card .img-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--dim);text-align:center;padding:8px;background:var(--bg3);}
+
+    .no-results{text-align:center;padding:60px 20px;color:var(--dim);font-size:14px;}
+    .footer{text-align:center;padding:28px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--dim);letter-spacing:1px;position:relative;z-index:1;}
+    .footer a{color:var(--accent);text-decoration:none;}
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="index.html">← 返回控制台</a>
+  <div class="hero-tag">TRUEGEAR · 体感服</div>
+  <h1 class="hero-title">已适配游戏</h1>
+  <p class="hero-sub">穿上体感服，让游戏触感真实可及</p>
+  <div class="hero-count"><span id="total-count">83</span><span>款游戏已适配</span></div>
+</div>
+
+<div class="controls">
+  <div class="search-wrap"><input type="text" id="search-input" placeholder="搜索游戏..." oninput="filterGames()"></div>
+  <div class="filter-btns">
+    <div class="fbtn active" data-tag="all"      onclick="setTag('all')">全部</div>
+    <div class="fbtn"        data-tag="vr"       onclick="setTag('vr')">VR</div>
+    <div class="fbtn"        data-tag="action"   onclick="setTag('action')">动作</div>
+    <div class="fbtn"        data-tag="shooter"  onclick="setTag('shooter')">射击</div>
+    <div class="fbtn"        data-tag="survival" onclick="setTag('survival')">生存</div>
+    <div class="fbtn"        data-tag="racing"   onclick="setTag('racing')">赛车</div>
+    <div class="fbtn"        data-tag="cn"       onclick="setTag('cn')">国产</div>
+  </div>
+  <span class="result-count" id="result-count"></span>
+</div>
+
+<div class="grid-wrap">
+  <div class="games-grid" id="games-grid"></div>
+  <div class="no-results" id="no-results" style="display:none">未找到匹配游戏</div>
+</div>
+
+<div class="footer">更多游戏持续适配中 · <a href="https://www.truegear.cn" target="_blank">www.truegear.cn</a></div>
+
+<script>
+const GAMES=[
+  {name:"Half-Life: Alyx",img:"546560",tags:["vr","action","shooter"]},
+  {name:"VRChat",img:"438100",tags:["vr"]},
+  {name:"Beat Saber",img:"620980",tags:["vr","action"]},
+  {name:"Blade & Sorcery",img:"629730",tags:["vr","action"]},
+  {name:"BONEWORKS",img:"823500",tags:["vr","action","shooter"]},
+  {name:"BONELAB",img:"1592190",tags:["vr","action","shooter"]},
+  {name:"Arizona Sunshine® 2",img:"1540210",tags:["vr","shooter","survival"]},
+  {name:"Assetto Corsa Competizione",img:"805550",tags:["racing"]},
+  {name:"The Walking Dead: Saints & Sinners",img:"916840",tags:["vr","survival","action"]},
+  {name:"Vertigo 2",img:"843390",tags:["vr","action","shooter"]},
+  {name:"After The Fall",img:"751630",tags:["vr","shooter","survival"]},
+  {name:"Half-Life 2: VR Mod",img:"658920",tags:["vr","shooter","action"]},
+  {name:"Until You Fall",img:"858260",tags:["vr","action"]},
+  {name:"H3VR",img:"450540",tags:["vr","shooter"]},
+  {name:"The Forest VR",img:"242760",tags:["vr","survival"]},
+  {name:"VTOL VR",img:"667970",tags:["vr","action"]},
+  {name:"Into the Radius VR",img:"1012790",tags:["vr","survival","shooter"]},
+  {name:"Fallout 4 VR",img:"611660",tags:["vr","action","survival"]},
+  {name:"Broken Edge",img:"1947070",tags:["vr","action"]},
+  {name:"GORN",img:"578620",tags:["vr","action"]},
+  {name:"SUPERHOT VR",img:"617830",tags:["vr","action","shooter"]},
+  {name:"POPULATION: ONE",img:"691260",tags:["vr","shooter"]},
+  {name:"Gorilla Tag",img:"1533390",tags:["vr","action"]},
+  {name:"The Lab",img:"450390",tags:["vr","action"]},
+  {name:"Propagation: Paradise Hotel",img:"1824960",tags:["vr","survival","action"]},
+  {name:"The Thrill of the Fight",img:"494150",tags:["vr","action"]},
+  {name:"Pistol Whip",img:"1079800",tags:["vr","action","shooter"]},
+  {name:"VAIL",img:"801550",tags:["vr","shooter"]},
+  {name:"Skyrim VR",img:"611670",tags:["vr","action"]},
+  {name:"Subnautica",img:"264710",tags:["survival","action"]},
+  {name:"Arizona Sunshine",img:"342180",tags:["vr","shooter","survival"]},
+  {name:"Resident Evil 7",img:"418370",tags:["action","survival"]},
+  {name:"Inside The Backrooms",img:"1987080",tags:["vr","survival"]},
+  {name:"Hell Split Arena",img:"1039880",tags:["vr","action"]},
+  {name:"Green Hell VR",img:"1782330",tags:["vr","survival"]},
+  {name:"玩命特工",img:"2492600",tags:["vr","action","shooter","cn"]},
+  {name:"All-In-One Sports VR",img:"1514840",tags:["vr","action"]},
+  {name:"Cooking Simulator VR",img:"1358140",tags:["vr"]},
+  {name:"COMPOUND",img:"615120",tags:["vr","shooter"]},
+  {name:"Into the Radius 2",img:"2307350",tags:["vr","survival","shooter"]},
+  {name:"Labyrinthine",img:"1302240",tags:["survival","action"]},
+  {name:"Hellsweeper VR",img:"1341490",tags:["vr","action"]},
+  {name:"Vampire: The Masquerade - Justice",img:"2431700",tags:["vr","action"]},
+  {name:"Arizona Sunshine Remake",img:"2897700",tags:["vr","shooter","survival"]},
+  {name:"黑神话：悟空",img:"2358720",tags:["action","cn"]},
+  {name:"Job Simulator",img:"448280",tags:["vr"]},
+  {name:"SURV1V3",img:"722180",tags:["vr","survival","shooter"]},
+  {name:"Resident Evil 4",img:"2050650",tags:["action","shooter"]},
+  {name:"DCS World",img:"223750",tags:["vr","action"]},
+  {name:"Skydance's BEHEMOTH",img:"1707990",tags:["vr","action"]},
+  {name:"Palworld",img:"1623730",tags:["survival","action"]},
+  {name:"Clone Drone in the Hyperdome",img:"2401230",tags:["action"]},
+  {name:"Left 4 Dead 2",img:"550",tags:["shooter","survival","action"]},
+  {name:"Automobilista 2",img:"1066890",tags:["racing"]},
+  {name:"Deep Rock Galactic",img:"548430",tags:["shooter","action"]},
+  {name:"I Am Cat",img:"3016840",tags:["action"]},
+  {name:"Among Us VR",img:"1849900",tags:["vr"]},
+  {name:"Human Fall Flat VR",img:"2777220",tags:["vr","action"]},
+  {name:"Paint the Town Red",img:"337320",tags:["action","vr"]},
+  {name:"The Light Brigade",img:"1579880",tags:["vr","action"]},
+  {name:"DEVOUR",img:"1274570",tags:["vr","survival"]},
+  {name:"BARRAGE",img:"836080",tags:["vr","shooter"]},
+  {name:"Swordsman VR",img:"1206480",tags:["vr","action"]},
+  {name:"Hard Bullet",img:"1294760",tags:["vr","shooter","action"]},
+  {name:"CROSSFIRE: SIERRA SQUAD",img:"1636030",tags:["vr","shooter"]},
+  {name:"The Room VR: A Dark Matter",img:"1104380",tags:["vr"]},
+  {name:"Vertigo Remastered",img:"1318090",tags:["vr","action","shooter"]},
+  {name:"Gun Club VR",img:"691320",tags:["vr","shooter"]},
+  {name:"Rick and Morty: Virtual Rick-ality",img:"469610",tags:["vr"]},
+  {name:"Kayak VR: Mirage",img:"1683340",tags:["vr","racing"]},
+  {name:"Arken Age",img:"2274200",tags:["vr","action","shooter"]},
+  {name:"Clair Obscur: Expedition 33",img:"1903340",tags:["action"]},
+  {name:"Mecha Force",img:"3193760",tags:["vr","action","cn"]},
+  {name:"No Man's Sky",img:"275850",tags:["survival","action"]},
+  {name:"In Death",img:"605450",tags:["vr","action","shooter"]},
+  {name:"Thief Simulator VR",img:"1019550",tags:["vr","action"]},
+  {name:"Pirates VR: Jolly Roger",img:"1443620",tags:["vr","action"]},
+  {name:"Paper Beast",img:"1232570",tags:["vr"]},
+  {name:"Cosmic Trip",img:"427240",tags:["vr","action"]},
+  {name:"Swordsman VR",img:"1206480",tags:["vr","action"]},
+  {name:"The Last Clockwinder",img:"1755100",tags:["vr"]},
+  {name:"Simhub",img:"_simhub",tags:["racing"]},
+  {name:"Minecraft",img:"_mc",tags:["action","survival"]},
+];
+
+function imgUrl(g){
+  if(g.img==='_simhub')return'https://static.truegear.cn/simhub/simhub2.png';
+  if(g.img==='_mc')return'https://static.truegear.cn/static/English/imgs/iamge/MineCraft.jpg';
+  return`https://media.st.dl.eccdnx.com/steam/apps/${g.img}/header.jpg`;
+}
+
+let currentTag='all';
+
+function setTag(tag){
+  currentTag=tag;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.toggle('active',b.dataset.tag===tag));
+  filterGames();
+}
+
+function filterGames(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const grid=document.getElementById('games-grid');
+  grid.innerHTML='';
+  let count=0;
+  for(const g of GAMES){
+    if(currentTag!=='all'&&!g.tags.includes(currentTag))continue;
+    if(q&&!g.name.toLowerCase().includes(q))continue;
+    count++;
+    const card=document.createElement('div');
+    card.className='game-card';
+    const isVR=g.tags.includes('vr');
+    card.innerHTML=`
+      <img src="${imgUrl(g)}" alt="${g.name}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="img-fallback" style="display:none">${g.name}</div>
+      ${isVR?'<div class="vr-badge">VR</div>':''}
+      <div class="overlay"><div class="g-name">${g.name}</div></div>
+    `;
+    grid.appendChild(card);
+  }
+  document.getElementById('result-count').textContent=count+' 款';
+  document.getElementById('total-count').textContent=GAMES.length;
+  document.getElementById('no-results').style.display=count===0?'block':'none';
+}
+
+filterGames();
+</script>
+</body>
+</html>

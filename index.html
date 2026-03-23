@@ -7,211 +7,183 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:       #04060f;
-      --bg2:      #080d1a;
-      --bg3:      #0d1525;
-      --border:   #1a2540;
-      --accent:   #00e5ff;
-      --accent2:  #7c3aed;
-      --green:    #00ff88;
-      --red:      #ff3366;
-      --yellow:   #ffcc00;
-      --text:     #c8d8f0;
-      --dim:      #3a4a6a;
-      --font-hd:  'Orbitron', monospace;
-      --font-mono:'Share Tech Mono', monospace;
+      --bg:#04060f; --bg2:#080d1a; --bg3:#0d1525; --border:#1a2540;
+      --accent:#00e5ff; --accent2:#7c3aed; --green:#00ff88;
+      --red:#ff3366; --yellow:#ffcc00; --text:#c8d8f0; --dim:#3a4a6a;
+      --font-hd:'Orbitron',monospace; --font-mono:'Share Tech Mono',monospace;
     }
-    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html, body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font-mono); overflow-x:hidden; }
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-mono);overflow-x:hidden;}
+    body::before{content:'';pointer-events:none;position:fixed;inset:0;z-index:9999;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);}
 
-    /* ── Scanline overlay ── */
-    body::before {
-      content:''; pointer-events:none; position:fixed; inset:0; z-index:9999;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px);
+    .app{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:0 auto;padding:14px;gap:10px;}
+
+    /* Header */
+    .header{display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;border-bottom:1px solid var(--border);}
+    .logo{font-family:var(--font-hd);font-size:17px;font-weight:900;letter-spacing:3px;color:var(--accent);text-shadow:0 0 20px var(--accent);}
+    .logo span{color:var(--accent2);}
+
+    /* Devices strip */
+    .devices-strip{display:flex;gap:6px;flex-wrap:wrap;}
+    .device-chip{
+      display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;
+      background:var(--bg2);border:1px solid var(--border);font-size:11px;cursor:pointer;transition:all .2s;
     }
-
-    /* ── Layout ── */
-    .app { display:flex; flex-direction:column; min-height:100vh; max-width:480px; margin:0 auto; padding:16px; gap:12px; }
-
-    /* ── Header ── */
-    .header { display:flex; align-items:center; justify-content:space-between; padding:12px 0 8px; border-bottom:1px solid var(--border); }
-    .logo { font-family:var(--font-hd); font-size:18px; font-weight:900; letter-spacing:3px; color:var(--accent); text-shadow:0 0 20px var(--accent); }
-    .logo span { color:var(--accent2); }
-    .conn-badge { display:flex; align-items:center; gap:6px; font-size:11px; letter-spacing:1px; }
-    .conn-dot { width:8px; height:8px; border-radius:50%; background:var(--dim); transition:all .4s; }
-    .conn-dot.on  { background:var(--green); box-shadow:0 0 10px var(--green); animation:blink 2s infinite; }
-    .conn-dot.err { background:var(--red); }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.5} }
-
-    /* ── Battery bar ── */
-    .battery-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .batt-card {
-      background:var(--bg2); border:1px solid var(--border); border-radius:8px;
-      padding:8px; text-align:center; transition:border-color .3s;
+    .device-chip.active{border-color:var(--green);}
+    .device-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--dim);}
+    .device-chip.active .dot{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
+    .device-chip.reconnecting .dot{background:var(--yellow);animation:blink .5s infinite;}
+    .device-chip .x{color:var(--dim);margin-left:2px;font-size:13px;}
+    .device-chip .x:hover{color:var(--red);}
+    .add-device-btn{
+      padding:5px 12px;border-radius:20px;background:transparent;
+      border:1px dashed var(--border);color:var(--dim);font-size:11px;cursor:pointer;font-family:var(--font-mono);
+      transition:all .2s;
     }
-    .batt-card.active { border-color:var(--accent); }
-    .batt-label { font-size:9px; letter-spacing:2px; color:var(--dim); margin-bottom:4px; text-transform:uppercase; }
-    .batt-val { font-family:var(--font-hd); font-size:18px; font-weight:700; color:var(--accent); }
-    .batt-val.low { color:var(--red); }
-    .batt-val.mid { color:var(--yellow); }
-    .batt-bar { height:3px; background:var(--bg3); border-radius:2px; margin-top:4px; overflow:hidden; }
-    .batt-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .5s, background .3s; }
-    .batt-fill.low { background:var(--red); }
-    .batt-fill.mid { background:var(--yellow); }
+    .add-device-btn:hover{border-color:var(--accent);color:var(--accent);}
+    .add-device-btn:disabled{opacity:.3;cursor:not-allowed;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
 
-    /* ── Connect button ── */
-    .connect-area { display:flex; gap:8px; }
-    .btn {
-      flex:1; padding:12px; border:none; border-radius:8px; font-family:var(--font-mono);
-      font-size:13px; letter-spacing:2px; cursor:pointer; transition:all .2s; text-transform:uppercase;
-    }
-    .btn:disabled { opacity:.3; cursor:not-allowed; }
-    .btn:active:not(:disabled) { transform:scale(.97); }
-    .btn-primary { background:linear-gradient(135deg,var(--accent2),#4f46e5); color:white; }
-    .btn-primary:hover:not(:disabled) { box-shadow:0 0 20px rgba(124,58,237,.5); }
-    .btn-danger  { background:transparent; color:var(--red); border:1px solid var(--red); }
-    .btn-danger:hover:not(:disabled) { background:rgba(255,51,102,.1); }
+    /* Battery */
+    .battery-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+    .batt-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center;}
+    .batt-label{font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;text-transform:uppercase;}
+    .batt-val{font-family:var(--font-hd);font-size:16px;font-weight:700;color:var(--accent);}
+    .batt-val.low{color:var(--red);} .batt-val.mid{color:var(--yellow);}
+    .batt-bar{height:3px;background:var(--bg3);border-radius:2px;margin-top:3px;overflow:hidden;}
+    .batt-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .5s,background .3s;}
+    .batt-fill.low{background:var(--red);} .batt-fill.mid{background:var(--yellow);}
 
-    /* ── Status ── */
-    .status-line { font-size:12px; color:var(--dim); text-align:center; min-height:18px; letter-spacing:1px; transition:color .3s; }
-    .status-line.ok    { color:var(--green); }
-    .status-line.error { color:var(--red); }
-    .status-line.load  { color:var(--yellow); }
+    /* Status */
+    .status-line{font-size:11px;color:var(--dim);text-align:center;min-height:16px;letter-spacing:1px;}
+    .status-line.ok{color:var(--green);} .status-line.error{color:var(--red);} .status-line.load{color:var(--yellow);}
 
-    /* ── Tabs ── */
-    .tabs { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:4px; border:1px solid var(--border); }
-    .tab {
-      flex:1; padding:8px; text-align:center; border-radius:7px; font-size:11px;
-      letter-spacing:1px; cursor:pointer; color:var(--dim); transition:all .2s; text-transform:uppercase;
-    }
-    .tab.active { background:var(--bg3); color:var(--accent); border:1px solid var(--border); box-shadow:0 0 10px rgba(0,229,255,.1); }
+    /* Tabs */
+    .tabs{display:flex;gap:3px;background:var(--bg2);border-radius:10px;padding:3px;border:1px solid var(--border);flex-wrap:wrap;}
+    .tab{flex:1;padding:7px 4px;text-align:center;border-radius:7px;font-size:10px;letter-spacing:1px;
+      cursor:pointer;color:var(--dim);transition:all .2s;text-transform:uppercase;min-width:52px;}
+    .tab.active{background:var(--bg3);color:var(--accent);border:1px solid var(--border);}
+    .panel{display:none;} .panel.active{display:block;}
 
-    /* ── Tab panels ── */
-    .panel { display:none; }
-    .panel.active { display:block; }
+    /* Button */
+    .btn{flex:1;padding:11px;border:none;border-radius:8px;font-family:var(--font-mono);
+      font-size:12px;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+    .btn:disabled{opacity:.3;cursor:not-allowed;}
+    .btn:active:not(:disabled){transform:scale(.97);}
+    .btn-primary{background:linear-gradient(135deg,var(--accent2),#4f46e5);color:white;}
+    .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}
+    .btn-sm{padding:6px 14px;font-size:11px;border-radius:6px;border:none;cursor:pointer;font-family:var(--font-mono);letter-spacing:1px;}
 
-    /* ══════════════════════════════════════════
-       BODY MAP
-    ══════════════════════════════════════════ */
-    .bodymap-wrap { position:relative; }
-    .side-toggle { display:flex; gap:6px; margin-bottom:10px; }
-    .side-btn {
-      flex:1; padding:7px; border-radius:6px; font-size:11px; letter-spacing:2px;
-      cursor:pointer; border:1px solid var(--border); background:var(--bg2); color:var(--dim);
-      text-transform:uppercase; transition:all .2s;
-    }
-    .side-btn.active { background:var(--bg3); border-color:var(--accent); color:var(--accent); }
+    /* Body map */
+    .side-toggle{display:flex;gap:6px;margin-bottom:8px;}
+    .side-btn{flex:1;padding:6px;border-radius:6px;font-size:11px;letter-spacing:2px;cursor:pointer;
+      border:1px solid var(--border);background:var(--bg2);color:var(--dim);text-transform:uppercase;transition:all .2s;}
+    .side-btn.active{background:var(--bg3);border-color:var(--accent);color:var(--accent);}
+    .body-svg-wrap{display:flex;justify-content:center;background:var(--bg2);border:1px solid var(--border);
+      border-radius:12px;padding:12px;position:relative;user-select:none;}
+    .body-svg{width:100%;max-width:440px;touch-action:none;}
+    .torso-path{fill:none;stroke:var(--dim);stroke-width:1.5;opacity:.2;}
+    .motor-zone{cursor:pointer;transition:all .15s;}
+    .motor-zone rect{fill:var(--bg3);stroke:var(--dim);stroke-width:1;rx:6;transition:all .15s;}
+    .motor-zone text{fill:var(--dim);font-size:10px;font-family:var(--font-mono);pointer-events:none;text-anchor:middle;dominant-baseline:middle;}
+    .motor-zone.active rect{fill:var(--accent);stroke:var(--accent);filter:drop-shadow(0 0 10px var(--accent));}
+    .motor-zone.active text{fill:var(--bg);}
+    .motor-zone.flash rect{fill:var(--yellow);stroke:var(--yellow);filter:drop-shadow(0 0 12px var(--yellow));}
+    .motor-zone.disabled rect{fill:var(--bg);stroke:var(--bg3);opacity:.25;}
+    .body-hint{text-align:center;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px;}
+    .intensity-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+    .intensity-label{font-size:10px;color:var(--dim);letter-spacing:1px;white-space:nowrap;}
+    input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;
+      background:linear-gradient(to right,var(--accent) var(--val,70%),var(--bg3) var(--val,70%));outline:none;}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+      background:var(--accent);box-shadow:0 0 8px var(--accent);cursor:pointer;}
+    .intensity-val{font-family:var(--font-hd);font-size:13px;color:var(--accent);min-width:30px;text-align:right;}
 
-    .body-svg-wrap {
-      display:flex; justify-content:center; align-items:center;
-      background:var(--bg2); border:1px solid var(--border); border-radius:12px;
-      padding:16px; position:relative; user-select:none;
-    }
+    /* Presets */
+    .preset-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+    .preset-btn{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+      padding:12px 10px;cursor:pointer;text-align:left;color:var(--text);transition:all .2s;position:relative;overflow:hidden;}
+    .preset-btn:disabled{opacity:.3;cursor:not-allowed;}
+    .preset-btn.firing{border-color:var(--green)!important;background:rgba(0,255,136,.06)!important;}
+    .preset-icon{font-size:20px;margin-bottom:3px;}
+    .preset-name{font-size:13px;font-weight:bold;margin-bottom:2px;}
+    .preset-desc{font-size:10px;color:var(--dim);}
 
-    .body-svg { width:100%; max-width:280px; touch-action:none; }
+    /* Files / Favorites */
+    .upload-zone{border:1px dashed var(--border);border-radius:10px;padding:18px;text-align:center;
+      cursor:pointer;transition:all .2s;position:relative;}
+    .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,229,255,.03);}
+    .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+    .upload-icon{font-size:22px;margin-bottom:4px;}
+    .upload-text{font-size:12px;color:var(--dim);letter-spacing:1px;}
+    .effect-list{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+    .effect-row{display:flex;align-items:center;justify-content:space-between;
+      background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;}
+    .effect-row-info .name{font-size:12px;color:var(--text);}
+    .effect-row-info .meta{font-size:10px;color:var(--dim);}
+    .effect-row-btns{display:flex;gap:5px;}
+    .btn-send{background:var(--accent2);color:white;}
+    .btn-save{background:transparent;color:var(--yellow);border:1px solid var(--yellow);}
+    .btn-del {background:transparent;color:var(--red);  border:1px solid rgba(255,51,102,.4);}
+    .section-label{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin:10px 0 6px;}
 
-    .torso-path { fill:none; stroke:var(--dim); stroke-width:1.5; opacity:.4; }
+    /* Editor */
+    .editor-wrap{display:flex;flex-direction:column;gap:8px;}
+    .editor-row{display:flex;gap:8px;align-items:center;}
+    .editor-label{font-size:11px;color:var(--dim);min-width:56px;letter-spacing:1px;}
+    .editor-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:var(--font-mono);font-size:12px;padding:7px 10px;outline:none;}
+    .editor-input:focus{border-color:var(--accent);}
+    select.editor-input option{background:var(--bg3);}
+    .motor-picker{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:4px;}
+    .mpick{width:26px;height:26px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);
+      color:var(--dim);font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+    .mpick.sel{background:var(--accent2);border-color:var(--accent2);color:white;}
+    .tracks-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;}
+    .track-row{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;
+      display:flex;justify-content:space-between;align-items:center;font-size:11px;}
+    .track-info{color:var(--text);}
+    .track-meta{color:var(--dim);font-size:10px;margin-top:2px;}
+    .btn-remove-track{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 4px;}
+    .btn-remove-track:hover{color:var(--red);}
+    .editor-actions{display:flex;gap:6px;margin-top:4px;}
 
-    .motor-zone {
-      cursor:pointer; transition:all .15s;
-    }
-    .motor-zone circle {
-      fill:var(--bg3); stroke:var(--dim); stroke-width:1;
-      transition:all .15s;
-    }
-    .motor-zone text {
-      fill:var(--dim); font-size:8px; font-family:var(--font-mono);
-      pointer-events:none; text-anchor:middle; dominant-baseline:middle;
-    }
-    .motor-zone.active circle {
-      fill:var(--accent); stroke:var(--accent);
-      filter:drop-shadow(0 0 8px var(--accent));
-    }
-    .motor-zone.active text { fill:var(--bg); }
-    .motor-zone.disabled circle { fill:var(--bg); stroke:var(--bg3); opacity:.3; }
+    /* Shake module */
+    .shake-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;display:none;}
+    .shake-panel.show{display:block;}
+    .shake-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .shake-title{font-size:12px;letter-spacing:2px;color:var(--text);text-transform:uppercase;}
+    .shake-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;}
+    .toggle-track{width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);position:relative;transition:background .2s;}
+    .toggle-track.on{background:var(--accent2);border-color:var(--accent2);}
+    .toggle-thumb{width:14px;height:14px;border-radius:50%;background:white;position:absolute;top:2px;left:2px;transition:left .2s;}
+    .toggle-track.on .toggle-thumb{left:18px;}
+    .shake-viz{height:48px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:10px;}
+    .shake-bar{position:absolute;bottom:0;width:100%;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:8px;transition:height .1s;height:0%;}
+    .shake-viz-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;color:var(--dim);letter-spacing:1px;pointer-events:none;}
+    .shake-settings{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+    .shake-setting{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+    .shake-setting label{font-size:10px;color:var(--dim);letter-spacing:1px;display:block;margin-bottom:4px;text-transform:uppercase;}
+    .shake-setting select{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;cursor:pointer;}
+    .shake-setting select option{background:var(--bg3);}
+    .shake-log{font-size:11px;color:var(--dim);text-align:center;min-height:16px;letter-spacing:1px;}
+    .shake-log.triggered{color:var(--green);}
+    .shake-log.error{color:var(--red);}
 
-    .body-hint { text-align:center; font-size:10px; color:var(--dim); margin-top:8px; letter-spacing:1px; }
-
-    /* ── Intensity slider ── */
-    .intensity-row { display:flex; align-items:center; gap:10px; margin-top:10px; }
-    .intensity-label { font-size:10px; color:var(--dim); letter-spacing:1px; white-space:nowrap; }
-    input[type=range] {
-      flex:1; -webkit-appearance:none; height:4px; border-radius:2px;
-      background:linear-gradient(to right, var(--accent) var(--val,50%), var(--bg3) var(--val,50%));
-      outline:none;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
-      background:var(--accent); box-shadow:0 0 8px var(--accent); cursor:pointer;
-    }
-    .intensity-val { font-family:var(--font-hd); font-size:14px; color:var(--accent); min-width:36px; text-align:right; }
-
-    /* ══════════════════════════════════════════
-       PRESETS
-    ══════════════════════════════════════════ */
-    .preset-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px; }
-    .preset-btn {
-      background:var(--bg2); border:1px solid var(--border); border-radius:10px;
-      padding:14px 10px; cursor:pointer; text-align:left; color:var(--text);
-      transition:all .2s; position:relative; overflow:hidden;
-    }
-    .preset-btn::before {
-      content:''; position:absolute; inset:0;
-      background:linear-gradient(135deg, rgba(0,229,255,.05), transparent);
-      opacity:0; transition:opacity .2s;
-    }
-    .preset-btn:hover:not(:disabled)::before { opacity:1; }
-    .preset-btn:hover:not(:disabled) { border-color:var(--accent); }
-    .preset-btn:disabled { opacity:.3; cursor:not-allowed; }
-    .preset-btn.firing { border-color:var(--green) !important; background:rgba(0,255,136,.05) !important; }
-    .preset-icon { font-size:20px; margin-bottom:4px; }
-    .preset-name { font-size:13px; font-weight:bold; margin-bottom:2px; }
-    .preset-desc { font-size:10px; color:var(--dim); }
-
-    /* ── File upload ── */
-    .upload-zone {
-      border:1px dashed var(--border); border-radius:10px; padding:20px;
-      text-align:center; cursor:pointer; transition:all .2s; position:relative;
-    }
-    .upload-zone:hover, .upload-zone.drag { border-color:var(--accent); background:rgba(0,229,255,.03); }
-    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
-    .upload-icon { font-size:24px; margin-bottom:6px; }
-    .upload-text { font-size:12px; color:var(--dim); letter-spacing:1px; }
-    .upload-hint { font-size:10px; color:var(--dim); margin-top:4px; }
-
-    .loaded-effects { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
-    .loaded-effect {
-      display:flex; align-items:center; justify-content:space-between;
-      background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px;
-    }
-    .loaded-effect-name { font-size:12px; color:var(--text); }
-    .loaded-effect-meta { font-size:10px; color:var(--dim); }
-    .btn-send-loaded {
-      padding:5px 12px; border-radius:6px; font-size:11px; letter-spacing:1px;
-      background:var(--accent2); color:white; border:none; cursor:pointer; transition:all .2s;
-    }
-    .btn-send-loaded:hover { background:#6d28d9; }
-    .btn-send-loaded.firing { background:var(--green); color:var(--bg); }
-
-    /* ══════════════════════════════════════════
-       LOG
-    ══════════════════════════════════════════ */
-    .log-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-    .log-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); }
-    .log-title { font-size:10px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; }
-    .log-clear { font-size:10px; color:var(--dim); cursor:pointer; padding:2px 6px; border-radius:4px; }
-    .log-clear:hover { color:var(--text); }
-    .log-body { max-height:140px; overflow-y:auto; padding:8px 12px; }
-    .log-line { font-size:11px; margin-bottom:2px; line-height:1.5; }
-    .log-line.ok    { color:var(--green); }
-    .log-line.warn  { color:var(--yellow); }
-    .log-line.error { color:var(--red); }
-    .log-line.info  { color:var(--dim); }
-
-    /* scrollbar */
-    ::-webkit-scrollbar { width:4px; }
-    ::-webkit-scrollbar-track { background:var(--bg2); }
-    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    /* Log */
+    .log-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+    .log-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border);}
+    .log-title{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+    .log-clear{font-size:10px;color:var(--dim);cursor:pointer;padding:2px 6px;border-radius:4px;}
+    .log-clear:hover{color:var(--text);}
+    .log-body{max-height:120px;overflow-y:auto;padding:6px 12px;}
+    .log-line{font-size:11px;margin-bottom:2px;line-height:1.5;}
+    .log-line.ok{color:var(--green);} .log-line.warn{color:var(--yellow);}
+    .log-line.error{color:var(--red);} .log-line.info{color:var(--dim);}
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-track{background:var(--bg2);}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
   </style>
 </head>
 <body>
@@ -220,75 +192,58 @@
   <!-- Header -->
   <div class="header">
     <div class="logo">TRUE<span>GEAR</span></div>
-    <div class="conn-badge">
-      <div class="conn-dot" id="conn-dot"></div>
-      <span id="conn-label" style="color:var(--dim)">离线</span>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="games.html" style="font-size:10px;color:var(--dim);letter-spacing:1px;text-decoration:none;border:1px solid var(--border);padding:4px 10px;border-radius:6px;transition:all .2s;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--dim)';this.style.borderColor='var(--border)'">🎮 游戏列表</a>
+      <div style="font-size:10px;color:var(--dim);letter-spacing:1px" id="conn-summary">未连接</div>
     </div>
   </div>
 
-  <!-- Battery -->
+  <!-- Devices -->
+  <div class="devices-strip" id="devices-strip">
+    <button class="add-device-btn" id="btn-add-device" onclick="addDevice()">＋ 连接设备</button>
+  </div>
+
+  <!-- Battery (shows for primary device) -->
   <div class="battery-row" id="battery-row" style="display:none">
-    <div class="batt-card" id="batt-vest">
+    <div class="batt-card">
       <div class="batt-label">背心</div>
       <div class="batt-val" id="bv-vest">--%</div>
       <div class="batt-bar"><div class="batt-fill" id="bf-vest" style="width:0%"></div></div>
     </div>
-    <div class="batt-card" id="batt-left">
+    <div class="batt-card">
       <div class="batt-label">左手</div>
       <div class="batt-val" id="bv-left">--%</div>
       <div class="batt-bar"><div class="batt-fill" id="bf-left" style="width:0%"></div></div>
     </div>
-    <div class="batt-card" id="batt-right">
+    <div class="batt-card">
       <div class="batt-label">右手</div>
       <div class="batt-val" id="bv-right">--%</div>
       <div class="batt-bar"><div class="batt-fill" id="bf-right" style="width:0%"></div></div>
     </div>
   </div>
 
-  <!-- Connect -->
-  <div class="connect-area">
-    <button class="btn btn-primary" id="btn-connect" onclick="connectBluetooth()">连接体感服</button>
-    <button class="btn btn-danger"  id="btn-disconnect" onclick="disconnectBluetooth()" disabled>断开</button>
-  </div>
-  <div class="status-line" id="status">等待连接...</div>
+  <div class="status-line" id="status">添加设备开始使用</div>
 
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('bodymap')">触控体图</div>
     <div class="tab"        onclick="switchTab('presets')">特效预设</div>
     <div class="tab"        onclick="switchTab('files')">特效文件</div>
+    <div class="tab"        onclick="switchTab('editor')">编辑器</div>
   </div>
 
-  <!-- ═══ TAB: BODY MAP ═══ -->
+  <!-- ═══ BODY MAP ═══ -->
   <div class="panel active" id="panel-bodymap">
-
     <div class="side-toggle">
       <div class="side-btn active" id="side-front" onclick="setSide('front')">前面</div>
       <div class="side-btn"        id="side-back"  onclick="setSide('back')">背面</div>
     </div>
-
     <div class="body-svg-wrap">
-      <svg class="body-svg" viewBox="0 0 280 340" id="body-svg">
-        <!-- Torso outline -->
-        <path class="torso-path" d="
-          M 140,18
-          C 115,18 95,32 90,55
-          L 72,105 C 65,130 60,180 65,230
-          L 70,285 C 74,305 82,318 95,318
-          L 185,318 C 198,318 206,305 210,285
-          L 215,230 C 220,180 215,130 208,105
-          L 190,55 C 185,32 165,18 140,18 Z
-        "/>
-        <!-- Shoulder hints -->
-        <path class="torso-path" d="M 90,55 C 70,50 55,60 50,80 L 48,110" stroke-dasharray="3,4"/>
-        <path class="torso-path" d="M 190,55 C 210,50 225,60 230,80 L 232,110" stroke-dasharray="3,4"/>
-        <!-- Motor zones injected by JS -->
+    <svg class="body-svg" viewBox="0 0 440 360" id="body-svg">
         <g id="motor-zones"></g>
       </svg>
     </div>
-
-    <div class="body-hint">按住振动点触发振动 · 松开停止</div>
-
+    <div class="body-hint">按住振动 · 滑动切换</div>
     <div class="intensity-row">
       <span class="intensity-label">强度</span>
       <input type="range" id="intensity-slider" min="10" max="100" value="70"
@@ -297,41 +252,124 @@
     </div>
   </div>
 
-  <!-- ═══ TAB: PRESETS ═══ -->
+  <!-- ═══ PRESETS ═══ -->
   <div class="panel" id="panel-presets">
-    <div class="preset-grid" id="preset-grid">
-      <button class="preset-btn" id="pb-bodydamage"        onclick="sendEffect('BodyDamage')" disabled>
-        <div class="preset-icon">💥</div>
-        <div class="preset-name">受到伤害</div>
-        <div class="preset-desc">振动+电刺激 250ms</div>
+    <div class="preset-grid">
+      <button class="preset-btn" id="pb-massage"    onclick="sendEffect('Massage')" disabled>
+        <div class="preset-icon">💆</div><div class="preset-name">按摩</div><div class="preset-desc">波浪式全身放松</div>
       </button>
-      <button class="preset-btn" id="pb-heartbeat"         onclick="sendEffect('Heartbeat')" disabled>
-        <div class="preset-icon">💓</div>
-        <div class="preset-name">心跳</div>
-        <div class="preset-desc">胸部振动脉冲</div>
+      <button class="preset-btn" id="pb-heartbeat"
+        onmousedown="startHeartbeat()" onmouseup="stopHeartbeat()" onmouseleave="stopHeartbeat()"
+        ontouchstart="startHeartbeat()" ontouchend="stopHeartbeat()" disabled>
+        <div class="preset-icon">💓</div><div class="preset-name">心跳</div><div class="preset-desc">按住持续</div>
       </button>
-      <button class="preset-btn" id="pb-explosion"         onclick="sendEffect('Explosion')" disabled>
-        <div class="preset-icon">💣</div>
-        <div class="preset-name">爆炸</div>
-        <div class="preset-desc">全身强烈振动</div>
+      <button class="preset-btn" id="pb-explosion"  onclick="sendEffect('Explosion')" disabled>
+        <div class="preset-icon">💣</div><div class="preset-name">爆炸</div><div class="preset-desc">全身强振</div>
       </button>
-      <button class="preset-btn" id="pb-lefthandpickupitem" onclick="sendEffect('LeftHandPickupItem')" disabled>
-        <div class="preset-icon">🤚</div>
-        <div class="preset-name">左手拾取</div>
-        <div class="preset-desc">左手轻振+电刺</div>
+      <button class="preset-btn" id="pb-healing"    onclick="sendEffect('Healing')" disabled>
+        <div class="preset-icon">💚</div><div class="preset-name">回血</div><div class="preset-desc">全身波浪扩散</div>
       </button>
     </div>
   </div>
 
-  <!-- ═══ TAB: FILES ═══ -->
+  <!-- ═══ FILES ═══ -->
   <div class="panel" id="panel-files">
     <div class="upload-zone" id="upload-zone">
       <input type="file" id="file-input" accept=".json,.asset_json" multiple onchange="loadFiles(this.files)">
       <div class="upload-icon">📂</div>
       <div class="upload-text">点击或拖拽特效文件</div>
-      <div class="upload-hint">.asset_json · 支持多文件</div>
     </div>
-    <div class="loaded-effects" id="loaded-effects"></div>
+    <div class="section-label">已加载</div>
+    <div class="effect-list" id="loaded-list"></div>
+    <div class="section-label">⭐ 收藏夹</div>
+    <div class="effect-list" id="fav-list"></div>
+  </div>
+
+  <!-- ═══ EDITOR ═══ -->
+  <div class="panel" id="panel-editor">
+    <div class="editor-wrap">
+      <div class="editor-row">
+        <span class="editor-label">特效名称</span>
+        <input class="editor-input" id="ed-name" placeholder="MyEffect" value="MyEffect">
+      </div>
+      <div class="editor-row">
+        <span class="editor-label">类型</span>
+        <select class="editor-input" id="ed-type">
+          <option value="Shake">振动 Shake</option>
+          <option value="Electrical">电刺激 Electrical</option>
+        </select>
+      </div>
+      <div class="editor-row">
+        <span class="editor-label">强度模式</span>
+        <select class="editor-input" id="ed-mode">
+          <option value="Const">恒定 Const</option>
+          <option value="Fade">渐变 Fade</option>
+          <option value="FadeInAndOut">先强后弱 FadeInAndOut</option>
+        </select>
+      </div>
+      <div class="editor-row">
+        <span class="editor-label">开始 ms</span>
+        <input class="editor-input" id="ed-start" type="number" value="0" min="0">
+        <span class="editor-label" style="min-width:40px;text-align:center">结束</span>
+        <input class="editor-input" id="ed-end" type="number" value="300" min="1">
+      </div>
+      <div class="editor-row">
+        <span class="editor-label">起始强度</span>
+        <input class="editor-input" id="ed-si" type="number" value="70" min="1" max="100">
+        <span class="editor-label" style="min-width:40px;text-align:center">终止</span>
+        <input class="editor-input" id="ed-ei" type="number" value="5" min="0" max="100">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--dim);margin-bottom:5px;letter-spacing:1px">选择马达（点击切换）</div>
+        <div class="motor-picker" id="motor-picker"></div>
+      </div>
+      <button class="btn-sm btn-send" onclick="editorAddTrack()">＋ 添加轨道</button>
+
+      <div class="section-label">轨道列表</div>
+      <div class="tracks-list" id="tracks-list"></div>
+
+      <div class="editor-actions">
+        <button class="btn-sm btn-send" onclick="editorSend()" id="ed-btn-send" disabled>▶ 发送测试</button>
+        <button class="btn-sm btn-save" onclick="editorSave()">⭐ 保存到收藏</button>
+        <button class="btn-sm btn-del"  onclick="editorClear()">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shake panel -->
+  <div class="shake-panel" id="shake-panel">
+    <div class="shake-header">
+      <span class="shake-title">📳 摇一摇触发</span>
+      <div class="shake-toggle" onclick="toggleShake()">
+        <div class="toggle-track" id="shake-track"><div class="toggle-thumb"></div></div>
+        <span style="font-size:10px;color:var(--dim)" id="shake-toggle-label">关闭</span>
+      </div>
+    </div>
+    <div class="shake-viz">
+      <div class="shake-bar" id="shake-bar"></div>
+      <div class="shake-viz-label" id="shake-viz-label">晃动手机触发特效</div>
+    </div>
+    <div class="shake-settings">
+      <div class="shake-setting">
+        <label>触发特效</label>
+        <select id="shake-effect-select">
+          <option value="Massage">💆 按摩</option>
+          <option value="HeartBeat">💓 心跳</option>
+          <option value="Explosion">💣 爆炸</option>
+          <option value="Healing">💚 回血</option>
+          <option value="fav">⭐ 随机收藏</option>
+        </select>
+      </div>
+      <div class="shake-setting">
+        <label>灵敏度</label>
+        <select id="shake-sensitivity">
+          <option value="25">低（需要用力摇）</option>
+          <option value="15" selected>中（推荐）</option>
+          <option value="6">高（轻轻摇就触发）</option>
+        </select>
+      </div>
+    </div>
+    <div class="shake-log" id="shake-log">等待摇动...</div>
   </div>
 
   <!-- Log -->
@@ -342,450 +380,567 @@
     </div>
     <div class="log-body" id="log-body"></div>
   </div>
-
-</div><!-- .app -->
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-//  TRUEGEAR BINARY PROTOCOL
-// ═══════════════════════════════════════════════════════════
-const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const UART_RX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-const UART_TX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-
+// ═══════════════════════════════════════════════════════
+//  BINARY PROTOCOL
+// ═══════════════════════════════════════════════════════
+const UART_SVC='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const UART_RX ='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const UART_TX ='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 const FD1=[1,1,4,4,1,1,4,4,1,1,4,4,1,1,4,4,1,1,4,4];
 const FD2=[0x8000,0x0400,0x8000,0x0400,0x4000,0x0200,0x4000,0x0200,
            0x2000,0x0100,0x2000,0x0100,0x1000,0x0080,0x1000,0x0080,0x0800,0x0040,0x0800,0x0040];
 const BD1=[2,2,3,3,2,2,3,3,2,2,3,3,2,2,3,3,2,2,3,3];
 const BD2=[0x8000,0x0400,0x8000,0x0400,0x4000,0x0200,0x4000,0x0200,
            0x2000,0x0100,0x2000,0x0100,0x1000,0x0080,0x1000,0x0080,0x0800,0x0040,0x0800,0x0040];
+const ELEC=1.0;
+const hi=v=>(v>>8)&0xFF, lo=v=>v&0xFF, i8=v=>v&0xFF;
 
-const ELEC_PCT = 1.0;
-
-function hi(v){ return (v>>8)&0xFF; }
-function lo(v){ return v&0xFF; }
-function i8(v){ return v&0xFF; }
-
-function motorBitmasks(indices){
+function motorBitmasks(idx){
   let b1=0,b2=0,b3=0,b4=0;
-  for(const idx of indices){
-    if(idx<100){ if(FD1[idx]===1)b1|=FD2[idx]; if(FD1[idx]===4)b4|=FD2[idx]; }
-    else{ const i=idx-100; if(BD1[i]===2)b2|=BD2[i]; if(BD1[i]===3)b3|=BD2[i]; }
+  for(const i of idx){
+    if(i<100){if(FD1[i]===1)b1|=FD2[i];if(FD1[i]===4)b4|=FD2[i];}
+    else{const j=i-100;if(BD1[j]===2)b2|=BD2[j];if(BD1[j]===3)b3|=BD2[j];}
   }
-  return [b1,b2,b3,b4];
+  return[b1,b2,b3,b4];
 }
 
-function buildShakeBytes(track, keep, assetId=0){
-  const bytes=[],bytes2=[]; const im=track.intensity_mode;
-  if(im==='Const')      { bytes.push(keep?3:1, keep?assetId:assetId); }
-  else if(im==='Fade')  { bytes.push(keep?4:2, keep?assetId:assetId); }
-  else if(im==='FadeInAndOut'){ bytes.push(keep?4:2,keep?assetId:assetId); bytes2.push(keep?4:2,keep?assetId:assetId); }
-
+function buildShakeBytes(t,keep,aid=0){
+  const b=[],b2=[],im=t.intensity_mode;
+  if(im==='Const')b.push(keep?3:1,aid);
+  else if(im==='Fade')b.push(keep?4:2,aid);
+  else{b.push(keep?4:2,aid);b2.push(keep?4:2,aid);}
   if(im==='FadeInAndOut'){
-    const mid=Math.floor((track.end_time+track.start_time)/2);
-    bytes.push(hi(track.start_time),lo(track.start_time),hi(mid),lo(mid));
-    bytes2.push(hi(mid),lo(mid),hi(track.end_time),lo(track.end_time));
-  } else {
-    bytes.push(hi(track.start_time),lo(track.start_time),hi(track.end_time),lo(track.end_time));
+    const m=Math.floor((t.end_time+t.start_time)/2);
+    b.push(hi(t.start_time),lo(t.start_time),hi(m),lo(m));
+    b2.push(hi(m),lo(m),hi(t.end_time),lo(t.end_time));
+  } else b.push(hi(t.start_time),lo(t.start_time),hi(t.end_time),lo(t.end_time));
+  const si=i8(t.start_intensity),ei=i8(t.end_intensity);
+  if(im==='Const')b.push(si,si);
+  else if(im==='Fade')b.push(si,ei);
+  else{b.push(si,ei);b2.push(ei,si);}
+  const[b1,bx,b3,b4]=motorBitmasks(t.index);
+  b.push(hi(b1),lo(b1),hi(bx),lo(bx),hi(b3),lo(b3),hi(b4),lo(b4));
+  b2.push(hi(b1),lo(b1),hi(bx),lo(bx),hi(b3),lo(b3),hi(b4),lo(b4));
+  return im==='FadeInAndOut'?b.concat(b2):b;
+}
+
+function buildElecBytes(t){
+  const b=[],b2=[],im=t.intensity_mode;
+  if(t.once){
+    b.push(0x10,0,hi(t.start_time),lo(t.start_time),0,0,0,0);
+    const si=Math.floor(t.start_intensity*ELEC);b.push(hi(si),lo(si),0,0);
+    let e1=0,e2=0;for(const i of t.index){if(i<100)e1=0xF0;else e2=0xF0;}
+    b.push(e1,0,e2,0);return b;
   }
-
-  const si=i8(track.start_intensity), ei=i8(track.end_intensity);
-  if(im==='Const')      { bytes.push(si,si); }
-  else if(im==='Fade')  { bytes.push(si,ei); }
-  else if(im==='FadeInAndOut'){ bytes.push(si,ei); bytes2.push(ei,si); }
-
-  const[b1,b2,b3,b4]=motorBitmasks(track.index);
-  bytes.push(hi(b1),lo(b1),hi(b2),lo(b2),hi(b3),lo(b3),hi(b4),lo(b4));
-  bytes2.push(hi(b1),lo(b1),hi(b2),lo(b2),hi(b3),lo(b3),hi(b4),lo(b4));
-  return im==='FadeInAndOut'?bytes.concat(bytes2):bytes;
-}
-
-function buildElectricalBytesOnce(track){
-  const bytes=[0x10,0x00]; bytes.push(hi(track.start_time),lo(track.start_time),0,0,0,0);
-  const si=Math.floor(track.start_intensity*ELEC_PCT); bytes.push(hi(si),lo(si),0,0);
-  let b1=0,b2=0; for(const idx of track.index){if(idx<100)b1=0xF0;else b2=0xF0;}
-  bytes.push(b1,0,b2,0); return bytes;
-}
-
-function buildElectricalBytes(track){
-  const bytes=[],bytes2=[]; const im=track.intensity_mode;
-  if(im==='Const')bytes.push(0x11,0); else if(im==='Fade')bytes.push(0x12,0);
-  else if(im==='FadeInAndOut'){bytes.push(0x12,0);bytes2.push(0x12,0);}
+  if(im==='Const')b.push(0x11,0);
+  else if(im==='Fade')b.push(0x12,0);
+  else{b.push(0x12,0);b2.push(0x12,0);}
   if(im==='FadeInAndOut'){
-    const mid=Math.floor((track.end_time+track.start_time)/2);
-    bytes.push(hi(track.start_time),lo(track.start_time),hi(mid),lo(mid));
-    bytes2.push(hi(mid),lo(mid),hi(track.end_time),lo(track.end_time));
-  } else { bytes.push(hi(track.start_time),lo(track.start_time),hi(track.end_time),lo(track.end_time)); }
-  bytes.push(i8(track.interval),0);
-  const si=Math.floor(track.start_intensity*ELEC_PCT), ei=Math.floor(track.end_intensity*ELEC_PCT);
-  if(im==='Const')bytes.push(hi(si),lo(si),hi(si),lo(si));
-  else if(im==='Fade')bytes.push(hi(si),lo(si),hi(ei),lo(ei));
-  else if(im==='FadeInAndOut'){bytes.push(hi(si),lo(si),hi(ei),lo(ei));bytes2.push(hi(ei),lo(ei),hi(si),lo(si));}
-  let b1=0,b2=0; for(const idx of track.index){if(idx<100)b1=0xF0;else b2=0xF0;}
-  bytes.push(b1,0,b2,0); if(im==='FadeInAndOut'){bytes2.push(b1,0,b2,0);return bytes.concat(bytes2);}
-  return bytes;
+    const m=Math.floor((t.end_time+t.start_time)/2);
+    b.push(hi(t.start_time),lo(t.start_time),hi(m),lo(m));
+    b2.push(hi(m),lo(m),hi(t.end_time),lo(t.end_time));
+  } else b.push(hi(t.start_time),lo(t.start_time),hi(t.end_time),lo(t.end_time));
+  b.push(i8(t.interval),0);
+  const si=Math.floor(t.start_intensity*ELEC),ei=Math.floor(t.end_intensity*ELEC);
+  if(im==='Const')b.push(hi(si),lo(si),hi(si),lo(si));
+  else if(im==='Fade')b.push(hi(si),lo(si),hi(ei),lo(ei));
+  else{b.push(hi(si),lo(si),hi(ei),lo(ei));b2.push(hi(ei),lo(ei),hi(si),lo(si));}
+  let e1=0,e2=0;for(const i of t.index){if(i<100)e1=0xF0;else e2=0xF0;}
+  b.push(e1,0,e2,0);
+  if(im==='FadeInAndOut'){b2.push(e1,0,e2,0);return b.concat(b2);}
+  return b;
 }
 
-function buildEffectBinary(effectObj){
-  const keep=effectObj.keep===true||effectObj.keep==='True';
-  let shakeBytes=[],elecBytes=[],shakeCount=0,elecCount=0;
-  for(const track of effectObj.tracks){
-    if(track.action_type==='Stop')break;
-    if(track.action_type==='Shake'){
-      shakeBytes=shakeBytes.concat(buildShakeBytes(track,keep));
-      shakeCount++; if(track.intensity_mode==='FadeInAndOut')shakeCount++;
-    }
-    if(track.action_type==='Electrical'){
-      const tb=track.once?buildElectricalBytesOnce(track):buildElectricalBytes(track);
-      elecBytes=elecBytes.concat(tb); elecCount++;
-      if(track.intensity_mode==='FadeInAndOut')elecCount++;
-    }
+function buildEffectBinary(eff){
+  const keep=eff.keep===true||eff.keep==='True';
+  let sb=[],eb=[],sc=0,ec=0;
+  for(const t of eff.tracks){
+    if(t.action_type==='Stop')break;
+    if(t.action_type==='Shake'){sb=sb.concat(buildShakeBytes(t,keep));sc++;if(t.intensity_mode==='FadeInAndOut')sc++;}
+    if(t.action_type==='Electrical'){eb=eb.concat(buildElecBytes(t));ec++;if(t.intensity_mode==='FadeInAndOut')ec++;}
   }
-  const result=[];
-  if(shakeCount>0)result.push(0x68,0x68,shakeCount,...shakeBytes,0x16);
-  if(elecCount>0)result.push(0x68,0x68,elecCount,...elecBytes,0x16);
-  return result;
+  const r=[];
+  if(sc>0)r.push(0x68,0x68,sc,...sb,0x16);
+  if(ec>0)r.push(0x68,0x68,ec,...eb,0x16);
+  return r;
 }
 
-// Keep effect (hold-to-vibrate)
-function buildKeepPacket(motorIdx, keepId, intensity){
-  const track={
-    intensity_mode:'Const', start_time:0, end_time:10000,
-    start_intensity:intensity, end_intensity:intensity,
-    index:[motorIdx], once:false, interval:0
-  };
-  const sb=buildShakeBytes(track,true,keepId);
-  return [0x68,0x68,1,...sb,0x16];
+function buildMotorPacket(idx,intensity){
+  const t={intensity_mode:'Const',start_time:0,end_time:200,start_intensity:intensity,end_intensity:intensity,index:[idx],once:false,interval:0};
+  const sb=buildShakeBytes(t,false,0);
+  return[0x68,0x68,1,...sb,0x16];
 }
 
-// Stop keep effect
-function buildStopPacket(keepId){
-  return [0x68,0x68,1, 0x20,keepId, 0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0x16];
+const HANDSHAKE=new Uint8Array([0x68,0x68,0x01,0x02,0x00,0x00,0x00,0x01,0xF4,0x00,0x46,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0x16]);
+
+// ═══════════════════════════════════════════════════════
+//  MULTI-DEVICE MANAGER
+// ═══════════════════════════════════════════════════════
+const devices=[];      // [{id, name, device, rxChar, status:'connected'|'reconnecting'|'disconnected', reconnectTimer, reconnectAttempts}]
+let primaryDeviceId=null;
+const MAX_RECONNECT=5;
+const RECONNECT_DELAY=2000;
+
+function getConnectedDevices(){ return devices.filter(d=>d.status==='connected'); }
+function getPrimary(){ return devices.find(d=>d.id===primaryDeviceId&&d.status==='connected')||getConnectedDevices()[0]||null; }
+
+async function addDevice(){
+  if(!navigator.bluetooth){setStatus('❌ 请用 Chrome 或 Edge 打开','error');return;}
+  try{
+    setStatus('搜索设备中...','load');
+    const ble=await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'Truegear'}],optionalServices:[UART_SVC]
+    });
+    // Check if already added
+    if(devices.find(d=>d.id===ble.id)){log('该设备已添加','warn');return;}
+    const entry={id:ble.id,name:ble.name,device:ble,rxChar:null,status:'reconnecting',reconnectTimer:null,reconnectAttempts:0};
+    devices.push(entry);
+    renderDevices();
+    await connectDevice(entry);
+  }catch(err){
+    setStatus('未选择设备','');
+    if(err.name!=='NotFoundError')log('错误：'+err.message,'error');
+  }
 }
 
-const HANDSHAKE=new Uint8Array([
-  0x68,0x68,0x01,0x02,0x00,0x00,0x00,0x01,
-  0xF4,0x00,0x46,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0xFF,0xC0,0x16
-]);
+async function connectDevice(entry){
+  try{
+    entry.status='reconnecting'; renderDevices();
+    log('连接中：'+entry.name,'warn');
+    const server=await entry.device.gatt.connect();
+    const svc=await server.getPrimaryService(UART_SVC);
+    entry.rxChar=await svc.getCharacteristic(UART_RX);
+    const txChar=await svc.getCharacteristic(UART_TX);
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged',e=>onNotify(e,entry));
+    await sendRawTo(entry.rxChar,HANDSHAKE);
+    entry.status='connected'; entry.reconnectAttempts=0;
+    if(!primaryDeviceId)primaryDeviceId=entry.id;
+    entry.device.addEventListener('gattserverdisconnected',()=>onDeviceDisconnected(entry));
+    renderDevices(); updateConnSummary(); enableControls();
+    log('✅ 已连接：'+entry.name,'ok');
+    setStatus('已连接：'+entry.name,'ok');
+    buildBodyMap();
+    renderLoadedEffects(); renderFavorites();
+    showShakePanel();
+  }catch(err){
+    log('连接失败：'+entry.name+' '+err.message,'error');
+    scheduleReconnect(entry);
+  }
+}
 
-// ═══════════════════════════════════════════════════════════
+function onDeviceDisconnected(entry){
+  entry.rxChar=null; entry.status='reconnecting';
+  log('设备断开：'+entry.name,'warn');
+  renderDevices(); updateConnSummary();
+  if(getConnectedDevices().length===0){
+    setStatus('设备已断开','error'); disableControls(); buildBodyMap();
+  }
+  scheduleReconnect(entry);
+}
+
+function scheduleReconnect(entry){
+  if(entry.reconnectAttempts>=MAX_RECONNECT){
+    entry.status='disconnected'; renderDevices();
+    log('⚠ 重连失败：'+entry.name,'error'); return;
+  }
+  entry.reconnectAttempts++;
+  log(`重连 ${entry.name} (${entry.reconnectAttempts}/${MAX_RECONNECT})...`,'warn');
+  entry.reconnectTimer=setTimeout(()=>connectDevice(entry),RECONNECT_DELAY);
+}
+
+function removeDevice(id){
+  const idx=devices.findIndex(d=>d.id===id);
+  if(idx===-1)return;
+  const entry=devices[idx];
+  if(entry.reconnectTimer)clearTimeout(entry.reconnectTimer);
+  if(entry.device&&entry.device.gatt.connected)entry.device.gatt.disconnect();
+  devices.splice(idx,1);
+  if(primaryDeviceId===id)primaryDeviceId=devices[0]?.id||null;
+  renderDevices(); updateConnSummary();
+  if(getConnectedDevices().length===0){setStatus('无连接设备','');disableControls();buildBodyMap();}
+  log('移除设备：'+entry.name,'info');
+}
+
+function renderDevices(){
+  const strip=document.getElementById('devices-strip');
+  strip.innerHTML='';
+  for(const d of devices){
+    const chip=document.createElement('div');
+    chip.className='device-chip'+(d.status==='connected'?' active':d.status==='reconnecting'?' reconnecting':'');
+    chip.innerHTML=`<div class="dot"></div><span>${d.name}</span><span class="x" onclick="event.stopPropagation();removeDevice('${d.id}')">×</span>`;
+    chip.onclick=()=>{primaryDeviceId=d.id;log('主设备：'+d.name,'ok');};
+    strip.appendChild(chip);
+  }
+  const addBtn=document.createElement('button');
+  addBtn.className='add-device-btn'; addBtn.id='btn-add-device';
+  addBtn.textContent='＋ 连接设备'; addBtn.onclick=addDevice;
+  strip.appendChild(addBtn);
+}
+
+function updateConnSummary(){
+  const c=getConnectedDevices().length;
+  document.getElementById('conn-summary').textContent=c===0?'未连接':c===1?'1台已连接':c+'台已连接';
+  document.getElementById('conn-summary').style.color=c===0?'var(--dim)':c===1?'var(--green)':'var(--accent)';
+}
+
+function onNotify(event,entry){
+  const data=new Uint8Array(event.target.value.buffer);
+  const hex=Array.from(data).map(b=>b.toString(16).padStart(2,'0')).join(' ');
+  log('← ['+entry.name+'] '+hex,'info');
+  if(data.length>=19&&(data[3]===0x80||data[3]===0x81)&&entry.id===primaryDeviceId){
+    updateBattery(
+      convBatt(getBatt(data[9],data[10])),
+      convBatt(getBatt(data[13],data[14])),
+      convBatt(getBatt(data[17],data[18]))
+    );
+  }
+}
+
+function getBatt(a,b){return(a&0xFF)*0x100+(b&0xFF);}
+function convBatt(v){if(v>3900)return 100;if(v>3700)return 75;if(v>3400)return 50;if(v>3000)return 25;if(v>2500)return 15;return 0;}
+function updateBattery(v,l,r){setBatt('vest',v);setBatt('left',l);setBatt('right',r);document.getElementById('battery-row').style.display='grid';}
+function setBatt(id,pct){
+  const val=document.getElementById('bv-'+id),fill=document.getElementById('bf-'+id);
+  val.textContent=pct+'%'; val.className='batt-val'+(pct<=15?' low':pct<=30?' mid':'');
+  fill.style.width=pct+'%'; fill.className='batt-fill'+(pct<=15?' low':pct<=30?' mid':'');
+}
+
+async function sendRawTo(rxChar,data){
+  for(let i=0;i<data.length;i+=128){
+    const chunk=data.slice(i,i+128);
+    await rxChar.writeValueWithoutResponse(chunk);
+    if(i+128<data.length)await delay(30);
+  }
+}
+
+async function sendToAll(binary){
+  const connected=getConnectedDevices();
+  if(connected.length===0){log('无已连接设备','error');return;}
+  const u8=new Uint8Array(binary);
+  await Promise.all(connected.map(d=>sendRawTo(d.rxChar,u8).catch(e=>log('发送失败['+d.name+']:'+e.message,'error'))));
+}
+
+let lastSend=0;
+async function sendEffectObj(effObj,label,btnId){
+  const binary=buildEffectBinary(effObj);
+  if(binary.length===0){log('特效无有效轨道','warn');return;}
+  const now=Date.now(),wait=70-(now-lastSend);
+  if(wait>0)await delay(wait); lastSend=Date.now();
+  log('→ '+label+' ('+binary.length+'字节)','ok');
+  await sendToAll(binary);
+  // Visualization: flash motors on body map
+  const indices=[];
+  for(const t of effObj.tracks){if(t.action_type==='Shake'&&t.index)indices.push(...t.index);}
+  flashMotors([...new Set(indices)]);
+  if(btnId){const btn=document.getElementById(btnId);if(btn){btn.classList.add('firing');setTimeout(()=>btn.classList.remove('firing'),400);}}
+}
+
+// ═══════════════════════════════════════════════════════
 //  PRESETS
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 const EFFECTS={
-  BodyDamage:{name:"BodyDamage",uuid:"BodyDamage",keep:false,priority:0,tracks:[
-    {start_time:0,end_time:250,stop_name:"",start_intensity:70,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[5,6,9,10,13,14]},
-    {start_time:0,end_time:250,stop_name:"",start_intensity:50,end_intensity:5,intensity_mode:"Const",action_type:"Electrical",once:false,interval:20,index:[0,100]}
+  Massage:{name:"Massage",uuid:"Massage",keep:false,priority:0,tracks:[
+    // 按摩：波浪式从上到下循环，轻柔恒定
+    {start_time:0,  end_time:300,stop_name:"",start_intensity:35,end_intensity:25,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[0,1,2,3]},
+    {start_time:250,end_time:550,stop_name:"",start_intensity:35,end_intensity:25,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[4,5,6,7]},
+    {start_time:500,end_time:800,stop_name:"",start_intensity:35,end_intensity:25,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[8,9,10,11]},
+    {start_time:750,end_time:1050,stop_name:"",start_intensity:35,end_intensity:25,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[12,13,14,15]},
+    {start_time:1000,end_time:1300,stop_name:"",start_intensity:35,end_intensity:25,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[16,17,18,19]}
   ]},
-  Heartbeat:{name:"Heartbeat",uuid:"Heartbeat",keep:false,priority:0,tracks:[
-    {start_time:0,end_time:150,stop_name:"",start_intensity:60,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[2,3]}
+  HeartBeat:{name:"HeartBeat",uuid:"HeartBeat",keep:false,priority:0,tracks:[
+    {start_time:0,  end_time:100,stop_name:"",start_intensity:30,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[0,1,4,5]},
+    {start_time:120,end_time:200,stop_name:"",start_intensity:40,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[4,5,6,8,9]}
   ]},
   Explosion:{name:"Explosion",uuid:"Explosion",keep:false,priority:0,tracks:[
     {start_time:0,end_time:400,stop_name:"",start_intensity:100,end_intensity:10,intensity_mode:"Fade",action_type:"Shake",once:false,interval:0,index:[0,1,2,3,4,5,6,7,8,9,10,11]}
   ]},
-  LeftHandPickupItem:{name:"LeftHandPickupItem",uuid:"LeftHandPickupItem",keep:false,priority:0,tracks:[
-    {start_time:0,end_time:100,stop_name:"",start_intensity:30,end_intensity:5,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[0,4]},
-    {start_time:0,end_time:200,stop_name:"",start_intensity:10,end_intensity:5,intensity_mode:"Const",action_type:"Electrical",once:false,interval:10,index:[0,100]}
+  Healing:{name:"Healing",uuid:"Healing",keep:false,priority:0,tracks:[
+    {start_time:0,  end_time:100,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[1,2,5,6]},
+    {start_time:100,end_time:200,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[0,3,4,7,8,9,10,11]},
+    {start_time:200,end_time:300,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[12,13,14,15,100,103,104,107,108,111,112,115]},
+    {start_time:300,end_time:400,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[16,17,18,19,101,102,105,106,109,110,113,114,116,117,118,119]},
+    {start_time:400,end_time:500,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[12,13,14,15,100,103,104,107,108,111,112,115]},
+    {start_time:500,end_time:600,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[0,3,4,7,8,9,10,11]},
+    {start_time:600,end_time:700,stop_name:"",start_intensity:30,end_intensity:20,intensity_mode:"Const",action_type:"Shake",once:false,interval:0,index:[1,2,5,6]}
   ]}
 };
 
-// ═══════════════════════════════════════════════════════════
-//  BLE
-// ═══════════════════════════════════════════════════════════
-let device=null, rxChar=null, lastSend=0;
-const CHUNK=128, CHUNK_DELAY=30, EFFECT_DELAY=70;
+async function sendEffect(name){await sendEffectObj(EFFECTS[name],name,'pb-'+name.toLowerCase());}
 
-async function sendRaw(data){
-  for(let i=0;i<data.length;i+=CHUNK){
-    const chunk=data.slice(i,i+CHUNK);
-    await rxChar.writeValueWithoutResponse(chunk);
-    if(i+CHUNK<data.length)await delay(CHUNK_DELAY);
-  }
-}
+let heartbeatTimer=null;
+async function heartbeatTick(){await sendEffectObj(EFFECTS['HeartBeat'],'心跳','pb-heartbeat');}
+function startHeartbeat(){if(getConnectedDevices().length===0||heartbeatTimer)return;heartbeatTick();heartbeatTimer=setInterval(heartbeatTick,800);document.getElementById('pb-heartbeat').classList.add('firing');}
+function stopHeartbeat(){if(!heartbeatTimer)return;clearInterval(heartbeatTimer);heartbeatTimer=null;document.getElementById('pb-heartbeat').classList.remove('firing');}
 
-async function connectBluetooth(){
-  if(!navigator.bluetooth){setStatus('❌ 请用 Chrome 或 Edge 打开','error');return;}
-  try{
-    setStatus('正在搜索...','load'); setConnDot('load');
-    clearLog();
-    device=await navigator.bluetooth.requestDevice({
-      filters:[{namePrefix:'Truegear'}],optionalServices:[UART_SERVICE]
-    });
-    log('找到设备：'+device.name,'ok');
-    setStatus('正在连接...','load');
-    const server=await device.gatt.connect();
-    const svc=await server.getPrimaryService(UART_SERVICE);
-    rxChar=await svc.getCharacteristic(UART_RX);
-    const txChar=await svc.getCharacteristic(UART_TX);
-    await txChar.startNotifications();
-    txChar.addEventListener('characteristicvaluechanged',onNotify);
-    await sendRaw(HANDSHAKE);
-    log('握手完成','ok');
-    device.addEventListener('gattserverdisconnected',onDisconnected);
-    setConnected(device.name);
-  }catch(err){
-    setConnDot('');
-    if(err.name==='NotFoundError'){setStatus('未选择设备','');}
-    else{setStatus('连接失败：'+err.message,'error');log('错误：'+err.message,'error');}
-  }
-}
+// ═══════════════════════════════════════════════════════
+//  BODY MAP
+// ═══════════════════════════════════════════════════════
+let currentSide='front', touchIntensity=70;
+const activeMotors=new Map();
+const SQ=58; // square size
+const GAP=10; // gap between squares
+const GRID_X=[20,98,176,254]; // left edges of 4 columns (each col = SQ+GAP apart from center)
+const GRID_Y=[18,90,162,234,306]; // top edges of 5 rows
 
-function onNotify(event){
-  const data=new Uint8Array(event.target.value.buffer);
-  const hex=Array.from(data).map(b=>b.toString(16).padStart(2,'0')).join(' ');
-  log('← '+hex,'info');
-  // Battery parse (data length >= 15, data[3] == 0x80 or 0x81)
-  if(data.length>=19&&(data[3]===0x80||data[3]===0x81)){
-    const vest  = convertBatt(getBatt(data[9], data[10]));
-    const left  = convertBatt(getBatt(data[13],data[14]));
-    const right = convertBatt(getBatt(data[17],data[18]));
-    updateBattery(vest,left,right);
-  }
-}
-
-function getBatt(d1,d2){ return (d1&0xFF)*0x100+(d2&0xFF); }
-function convertBatt(v){
-  if(v>3900)return 100; if(v>3700)return 75; if(v>3400)return 50;
-  if(v>3000)return 25;  if(v>2500)return 15; return 0;
-}
-
-function updateBattery(vest,left,right){
-  setBatt('vest',vest); setBatt('left',left); setBatt('right',right);
-  document.getElementById('battery-row').style.display='grid';
-}
-
-function setBatt(id,pct){
-  const val=document.getElementById('bv-'+id);
-  const fill=document.getElementById('bf-'+id);
-  val.textContent=pct+'%';
-  val.className='batt-val'+(pct<=15?' low':pct<=30?' mid':'');
-  fill.style.width=pct+'%';
-  fill.className='batt-fill'+(pct<=15?' low':pct<=30?' mid':'');
-}
-
-function onDisconnected(){
-  rxChar=null; setConnDot(''); setDisconnected();
-  setStatus('已断开连接','error');
-  log('设备已断开','warn');
-  releaseAllMotors();
-}
-
-function disconnectBluetooth(){
-  if(device&&device.gatt.connected)device.gatt.disconnect();
-}
-
-async function sendEffect(name){
-  const effect=EFFECTS[name]; if(!effect)return;
-  await sendEffectObj(effect,name,'pb-'+name.toLowerCase());
-}
-
-async function sendEffectObj(effectObj,label,btnId){
-  if(!rxChar){log('未连接设备','error');return;}
-  const now=Date.now(); const wait=EFFECT_DELAY-(now-lastSend);
-  if(wait>0)await delay(wait); lastSend=Date.now();
-  try{
-    const binary=buildEffectBinary(effectObj);
-    if(binary.length===0){log('特效没有有效轨道','warn');return;}
-    log('→ 发送：'+label+' ('+binary.length+'字节)','ok');
-    await sendRaw(new Uint8Array(binary));
-    if(btnId){
-      const btn=document.getElementById(btnId);
-      if(btn){btn.classList.add('firing');setTimeout(()=>btn.classList.remove('firing'),400);}
-    }
-  }catch(err){log('发送失败：'+err.message,'error');}
-}
-
-// ═══════════════════════════════════════════════════════════
-//  BODY MAP – INTERACTIVE TOUCH
-// ═══════════════════════════════════════════════════════════
-let currentSide='front';
-let touchIntensity=70;
-let keepIdCounter=0;
-const activeMotors=new Map(); // motorIdx → keepId
-
-// Motor grid positions in SVG space (5 rows × 4 cols)
-// Front: 0-19, Back: 100-119
-const GRID_X=[100,128,152,180];
-const GRID_Y=[90,135,180,225,270];
-
-function motorPos(localIdx){
-  // localIdx 0-19 for both front and back
-  const row=Math.floor(localIdx/4), col=localIdx%4;
-  return {x:GRID_X[col], y:GRID_Y[row]};
-}
+function motorPos(i){const row=Math.floor(i/4),col=i%4;return{x:GRID_X[col],y:GRID_Y[row]};}
 
 function buildBodyMap(){
-  const g=document.getElementById('motor-zones');
-  g.innerHTML='';
-  const count=20;
-  for(let i=0;i<count;i++){
-    const motorIdx=currentSide==='front'?i:(i+100);
+  const g=document.getElementById('motor-zones'); g.innerHTML='';
+  const connected=getConnectedDevices().length>0;
+  for(let i=0;i<20;i++){
+    const mIdx=currentSide==='front'?i:(i+100);
     const pos=motorPos(i);
     const zone=document.createElementNS('http://www.w3.org/2000/svg','g');
-    zone.setAttribute('class','motor-zone'+(rxChar?'':' disabled'));
-    zone.setAttribute('id','mz-'+motorIdx);
-    zone.setAttribute('data-motor',motorIdx);
-
-    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx',pos.x); circle.setAttribute('cy',pos.y); circle.setAttribute('r','14');
-
-    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
-    text.setAttribute('x',pos.x); text.setAttribute('y',pos.y);
-    text.textContent=motorIdx<100?motorIdx:(motorIdx-100);
-
-    zone.appendChild(circle); zone.appendChild(text);
-
-    // Touch / Mouse events
-    zone.addEventListener('mousedown',  e=>{e.preventDefault();startMotor(motorIdx,zone);});
-    zone.addEventListener('touchstart', e=>{e.preventDefault();startMotor(motorIdx,zone);},{passive:false});
-    zone.addEventListener('mouseup',    e=>{e.preventDefault();stopMotor(motorIdx,zone);});
-    zone.addEventListener('touchend',   e=>{e.preventDefault();stopMotor(motorIdx,zone);},{passive:false});
-    zone.addEventListener('mouseleave', e=>{stopMotor(motorIdx,zone);});
-
+    zone.setAttribute('class','motor-zone'+(connected?'':' disabled'));
+    zone.setAttribute('id','mz-'+mIdx);
+    const c=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    c.setAttribute('x',pos.x);c.setAttribute('y',pos.y);
+    c.setAttribute('width',SQ);c.setAttribute('height',SQ);
+    c.setAttribute('rx','8');
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',pos.x+SQ/2);t.setAttribute('y',pos.y+SQ/2);
+    t.textContent=mIdx<100?mIdx:(mIdx-100);
+    zone.appendChild(c);zone.appendChild(t);
+    zone.addEventListener('mousedown', e=>{e.preventDefault();startMotor(mIdx,zone);});
+    zone.addEventListener('touchstart',e=>{e.preventDefault();startMotor(mIdx,zone);},{passive:false});
+    zone.addEventListener('mouseup',   e=>{e.preventDefault();stopMotor(mIdx,zone);});
+    zone.addEventListener('touchend',  e=>{e.preventDefault();stopAllMotors();},{passive:false});
+    zone.addEventListener('mouseleave',e=>{stopMotor(mIdx,zone);});
     g.appendChild(zone);
   }
 }
 
-async function startMotor(motorIdx,zone){
-  if(!rxChar||activeMotors.has(motorIdx))return;
-  keepIdCounter=(keepIdCounter%254)+1;
-  const kid=keepIdCounter;
-  activeMotors.set(motorIdx,kid);
+async function fireBurst(mIdx){
+  const connected=getConnectedDevices();
+  if(!connected.length)return;
+  try{const pkt=new Uint8Array(buildMotorPacket(mIdx,touchIntensity));await sendToAll(Array.from(pkt));}catch(e){}
+}
+
+function startMotor(mIdx,zone){
+  if(!getConnectedDevices().length||activeMotors.has(mIdx))return;
   zone.classList.add('active');
-  try{
-    const pkt=buildKeepPacket(motorIdx,kid,touchIntensity);
-    await sendRaw(new Uint8Array(pkt));
-    log(`▶ 马达 ${motorIdx} 激活 (强度${touchIntensity})`,'ok');
-  }catch(err){log('发送失败：'+err.message,'error');}
+  fireBurst(mIdx);
+  activeMotors.set(mIdx,setInterval(()=>fireBurst(mIdx),150));
+}
+function stopMotor(mIdx,zone){
+  if(!activeMotors.has(mIdx))return;
+  clearInterval(activeMotors.get(mIdx));activeMotors.delete(mIdx);zone.classList.remove('active');
+}
+function stopAllMotors(){for(const[i,id]of activeMotors){clearInterval(id);const z=document.getElementById('mz-'+i);if(z)z.classList.remove('active');}activeMotors.clear();}
+
+document.getElementById('body-svg').addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const touch=e.touches[0];
+  const el=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(!el)return;
+  const zone=el.closest('.motor-zone');
+  if(!zone)return;
+  const mIdx=parseInt(zone.id.replace('mz-',''));
+  if(isNaN(mIdx))return;
+  for(const[idx,id]of activeMotors){if(idx!==mIdx){clearInterval(id);activeMotors.delete(idx);const z=document.getElementById('mz-'+idx);if(z)z.classList.remove('active');}}
+  if(!activeMotors.has(mIdx))startMotor(mIdx,zone);
+},{passive:false});
+
+function setSide(s){
+  currentSide=s;
+  document.getElementById('side-front').classList.toggle('active',s==='front');
+  document.getElementById('side-back').classList.toggle('active',s==='back');
+  stopAllMotors(); buildBodyMap();
+}
+function updateIntensity(v){
+  touchIntensity=parseInt(v);
+  document.getElementById('intensity-val').textContent=v;
+  document.getElementById('intensity-slider').style.setProperty('--val',v+'%');
 }
 
-async function stopMotor(motorIdx,zone){
-  if(!activeMotors.has(motorIdx))return;
-  const kid=activeMotors.get(motorIdx);
-  activeMotors.delete(motorIdx);
-  zone.classList.remove('active');
-  if(!rxChar)return;
-  try{
-    const pkt=buildStopPacket(kid);
-    await sendRaw(new Uint8Array(pkt));
-    log(`■ 马达 ${motorIdx} 停止`,'info');
-  }catch(err){}
-}
-
-async function releaseAllMotors(){
-  for(const[motorIdx]of activeMotors){
-    const zone=document.getElementById('mz-'+motorIdx);
-    if(zone)zone.classList.remove('active');
+// Flash motor zones for visualization
+function flashMotors(indices){
+  for(const idx of indices){
+    let mIdx;
+    if(currentSide==='front'&&idx<100)mIdx=idx;
+    else if(currentSide==='back'&&idx>=100)mIdx=idx;
+    else continue;
+    const zone=document.getElementById('mz-'+mIdx);
+    if(!zone||activeMotors.has(mIdx))continue;
+    zone.classList.add('flash');
+    setTimeout(()=>zone.classList.remove('flash'),350);
   }
-  activeMotors.clear();
 }
 
-function setSide(side){
-  currentSide=side;
-  document.getElementById('side-front').classList.toggle('active',side==='front');
-  document.getElementById('side-back').classList.toggle('active',side==='back');
-  releaseAllMotors();
-  buildBodyMap();
-}
-
-function updateIntensity(val){
-  touchIntensity=parseInt(val);
-  document.getElementById('intensity-val').textContent=val;
-  document.getElementById('intensity-slider').style.setProperty('--val',val+'%');
-}
-
-// ═══════════════════════════════════════════════════════════
-//  FILE UPLOAD
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  FILES & FAVORITES
+// ═══════════════════════════════════════════════════════
 const loadedEffects=[];
 
+function normalizeEffect(json){
+  if(typeof json.keep==='string')json.keep=json.keep==='True';
+  if(json.tracks)for(const t of json.tracks){if(typeof t.once==='string')t.once=t.once==='True';}
+  return json;
+}
+
 function loadFiles(files){
-  for(const file of files){
-    const reader=new FileReader();
-    reader.onload=e=>{
+  for(const f of files){
+    const r=new FileReader();
+    r.onload=e=>{
       try{
-        const json=JSON.parse(e.target.result);
-        if(typeof json.name==='undefined')throw new Error('不是有效的特效文件');
-        if(typeof json.keep==='string')json.keep=json.keep==='True';
-        if(json.tracks)for(const t of json.tracks){if(typeof t.once==='string')t.once=t.once==='True';}
-        loadedEffects.push({name:json.name||file.name, effect:json});
-        renderLoadedEffects();
-        log('已加载特效：'+json.name,'ok');
-      }catch(err){log('文件格式错误：'+file.name,'error');}
+        const json=normalizeEffect(JSON.parse(e.target.result));
+        if(!json.name)throw new Error('无效文件');
+        loadedEffects.push({name:json.name,effect:json});
+        renderLoadedEffects(); log('已加载：'+json.name,'ok');
+      }catch(err){log('格式错误：'+f.name,'error');}
     };
-    reader.readAsText(file);
+    r.readAsText(f);
   }
 }
 
 function renderLoadedEffects(){
-  const container=document.getElementById('loaded-effects');
-  container.innerHTML='';
+  const c=document.getElementById('loaded-list'); c.innerHTML='';
   for(let i=0;i<loadedEffects.length;i++){
     const{name,effect}=loadedEffects[i];
-    const tracks=effect.tracks?effect.tracks.length:0;
-    const div=document.createElement('div');
-    div.className='loaded-effect';
-    div.innerHTML=`
-      <div>
-        <div class="loaded-effect-name">${name}</div>
-        <div class="loaded-effect-meta">${tracks} 轨道</div>
-      </div>
-      <button class="btn-send-loaded" id="le-${i}" onclick="sendLoadedEffect(${i})" ${rxChar?'':'disabled'}>发送</button>
-    `;
-    container.appendChild(div);
+    const div=document.createElement('div'); div.className='effect-row';
+    div.innerHTML=`<div class="effect-row-info"><div class="name">${name}</div><div class="meta">${effect.tracks?.length||0} 轨道</div></div>
+    <div class="effect-row-btns">
+      <button class="btn-sm btn-send" id="lf-${i}" onclick="sendLoadedEffect(${i})" ${getConnectedDevices().length?'':'disabled'}>发送</button>
+      <button class="btn-sm btn-save" onclick="saveToFav(${i})">⭐</button>
+    </div>`;
+    c.appendChild(div);
   }
 }
 
-async function sendLoadedEffect(idx){
-  const{name,effect}=loadedEffects[idx];
-  await sendEffectObj(effect,name,'le-'+idx);
+async function sendLoadedEffect(i){await sendEffectObj(loadedEffects[i].effect,loadedEffects[i].name,'lf-'+i);}
+function saveToFav(i){
+  const{name,effect}=loadedEffects[i];
+  const favs=getFavs(); favs.push({name,effect}); setFavs(favs);
+  renderFavorites(); log('已收藏：'+name,'ok');
 }
 
-// Drag and drop
+function getFavs(){try{return JSON.parse(localStorage.getItem('tg_favs')||'[]');}catch{return[];}}
+function setFavs(v){try{localStorage.setItem('tg_favs',JSON.stringify(v));}catch{}}
+
+function renderFavorites(){
+  const favs=getFavs(); const c=document.getElementById('fav-list'); c.innerHTML='';
+  if(favs.length===0){c.innerHTML='<div style="font-size:11px;color:var(--dim);padding:8px">暂无收藏，发送文件后点 ⭐ 收藏</div>';return;}
+  for(let i=0;i<favs.length;i++){
+    const{name,effect}=favs[i];
+    const div=document.createElement('div'); div.className='effect-row';
+    div.innerHTML=`<div class="effect-row-info"><div class="name">${name}</div><div class="meta">${effect.tracks?.length||0} 轨道</div></div>
+    <div class="effect-row-btns">
+      <button class="btn-sm btn-send" id="fv-${i}" onclick="sendFav(${i})" ${getConnectedDevices().length?'':'disabled'}>发送</button>
+      <button class="btn-sm btn-del" onclick="deleteFav(${i})">×</button>
+    </div>`;
+    c.appendChild(div);
+  }
+}
+
+async function sendFav(i){const favs=getFavs();if(favs[i])await sendEffectObj(favs[i].effect,favs[i].name,'fv-'+i);}
+function deleteFav(i){const favs=getFavs();favs.splice(i,1);setFavs(favs);renderFavorites();log('已删除收藏','info');}
+
 const uz=document.getElementById('upload-zone');
-uz.addEventListener('dragover', e=>{e.preventDefault();uz.classList.add('drag');});
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag');});
 uz.addEventListener('dragleave',e=>{uz.classList.remove('drag');});
-uz.addEventListener('drop',     e=>{e.preventDefault();uz.classList.remove('drag');loadFiles(e.dataTransfer.files);});
+uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag');loadFiles(e.dataTransfer.files);});
 
-// ═══════════════════════════════════════════════════════════
-//  UI HELPERS
-// ═══════════════════════════════════════════════════════════
-function setStatus(t,type){
-  const el=document.getElementById('status');
-  el.textContent=t; el.className='status-line '+(type==='load'?'load':type);
+// ═══════════════════════════════════════════════════════
+//  EFFECT EDITOR
+// ═══════════════════════════════════════════════════════
+let editorTracks=[];
+let selectedMotors=new Set();
+
+function buildMotorPicker(){
+  const p=document.getElementById('motor-picker'); p.innerHTML='';
+  for(let i=0;i<20;i++){
+    const btn=document.createElement('div'); btn.className='mpick'+(selectedMotors.has(i)?' sel':'');
+    btn.textContent=i; btn.onclick=()=>{
+      if(selectedMotors.has(i))selectedMotors.delete(i);else selectedMotors.add(i);
+      buildMotorPicker();
+    };
+    p.appendChild(btn);
+  }
+  // Back motors 100-119
+  for(let i=0;i<20;i++){
+    const btn=document.createElement('div'); btn.className='mpick'+(selectedMotors.has(i+100)?' sel':'');
+    btn.style.fontSize='8px'; btn.textContent='B'+i; btn.onclick=()=>{
+      const idx=i+100;
+      if(selectedMotors.has(idx))selectedMotors.delete(idx);else selectedMotors.add(idx);
+      buildMotorPicker();
+    };
+    p.appendChild(btn);
+  }
 }
 
-function setConnDot(state){
-  const dot=document.getElementById('conn-dot');
-  const lbl=document.getElementById('conn-label');
-  dot.className='conn-dot'+(state==='on'?' on':state==='err'?' err':'');
-  lbl.textContent=state==='on'?'已连接':state==='load'?'连接中':'离线';
-  lbl.style.color=state==='on'?'var(--green)':state==='load'?'var(--yellow)':'var(--dim)';
+function editorAddTrack(){
+  const name=document.getElementById('ed-name').value||'MyEffect';
+  const type=document.getElementById('ed-type').value;
+  const mode=document.getElementById('ed-mode').value;
+  const start=parseInt(document.getElementById('ed-start').value)||0;
+  const end=parseInt(document.getElementById('ed-end').value)||300;
+  const si=parseInt(document.getElementById('ed-si').value)||70;
+  const ei=parseInt(document.getElementById('ed-ei').value)||5;
+  const indices=[...selectedMotors];
+  if(indices.length===0){log('请先选择至少一个马达','warn');return;}
+  const track={action_type:type,intensity_mode:mode,start_time:start,end_time:end,
+    start_intensity:si,end_intensity:ei,index:indices,once:false,interval:20,stop_name:''};
+  editorTracks.push(track);
+  renderEditorTracks();
+  log('添加轨道：'+type+' 马达'+indices.join(','),'ok');
 }
 
-function setConnected(name){
-  setConnDot('on');
-  document.getElementById('btn-connect').disabled=true;
-  document.getElementById('btn-disconnect').disabled=false;
+function renderEditorTracks(){
+  const c=document.getElementById('tracks-list'); c.innerHTML='';
+  for(let i=0;i<editorTracks.length;i++){
+    const t=editorTracks[i];
+    const div=document.createElement('div'); div.className='track-row';
+    div.innerHTML=`<div><div class="track-info">${t.action_type} · ${t.intensity_mode} · ${t.start_time}-${t.end_time}ms</div>
+      <div class="track-meta">强度:${t.start_intensity}→${t.end_intensity} · 马达:[${t.index.join(',')}]</div></div>
+      <button class="btn-remove-track" onclick="editorRemoveTrack(${i})">×</button>`;
+    c.appendChild(div);
+  }
+  document.getElementById('ed-btn-send').disabled=editorTracks.length===0||getConnectedDevices().length===0;
+}
+
+function editorRemoveTrack(i){editorTracks.splice(i,1);renderEditorTracks();}
+
+async function editorSend(){
+  if(!editorTracks.length)return;
+  const name=document.getElementById('ed-name').value||'MyEffect';
+  const eff={name,uuid:name,keep:false,priority:0,tracks:editorTracks};
+  await sendEffectObj(eff,name,null);
+}
+
+function editorSave(){
+  if(!editorTracks.length){log('请先添加轨道','warn');return;}
+  const name=document.getElementById('ed-name').value||'MyEffect';
+  const eff={name,uuid:name,keep:false,priority:0,tracks:[...editorTracks]};
+  const favs=getFavs(); favs.push({name,effect:eff}); setFavs(favs);
+  renderFavorites(); switchTab('files');
+  log('已保存到收藏：'+name,'ok');
+}
+
+function editorClear(){editorTracks=[];selectedMotors=new Set();buildMotorPicker();renderEditorTracks();log('编辑器已清空','info');}
+
+// ═══════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════
+function setStatus(t,type){const el=document.getElementById('status');el.textContent=t;el.className='status-line '+(type||'');}
+
+function enableControls(){
   document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=false);
-  document.querySelectorAll('.btn-send-loaded').forEach(b=>b.disabled=false);
-  buildBodyMap();
-  setStatus('已连接：'+name,'ok');
+  document.getElementById('ed-btn-send').disabled=editorTracks.length===0;
+  renderLoadedEffects(); renderFavorites(); buildBodyMap();
 }
-
-function setDisconnected(){
-  document.getElementById('btn-connect').disabled=false;
-  document.getElementById('btn-disconnect').disabled=true;
+function disableControls(){
   document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=true);
-  document.querySelectorAll('.btn-send-loaded').forEach(b=>b.disabled=true);
-  document.getElementById('battery-row').style.display='none';
-  buildBodyMap(); // rebuild with disabled state
+  document.getElementById('ed-btn-send').disabled=true;
+  renderLoadedEffects(); renderFavorites(); buildBodyMap();
 }
 
 function switchTab(name){
-  document.querySelectorAll('.tab').forEach((t,i)=>{
-    const names=['bodymap','presets','files'];
-    t.classList.toggle('active',names[i]===name);
-  });
+  const names=['bodymap','presets','files','editor'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
 }
@@ -794,16 +949,157 @@ function log(msg,type='info'){
   const body=document.getElementById('log-body');
   const line=document.createElement('div');
   const time=new Date().toLocaleTimeString('zh',{hour12:false});
-  line.className='log-line '+type;
-  line.textContent='['+time+'] '+msg;
+  line.className='log-line '+type; line.textContent='['+time+'] '+msg;
   body.appendChild(line); body.scrollTop=body.scrollHeight;
 }
+function clearLog(){document.getElementById('log-body').innerHTML='';}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
-function clearLog(){ document.getElementById('log-body').innerHTML=''; }
-function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+// ═══════════════════════════════════════════════════════
+//  SHAKE TO TRIGGER
+// ═══════════════════════════════════════════════════════
+let shakeEnabled=false;
+let lastAcc={x:0,y:0,z:0};
+let lastShakeTime=0;
+let shakeCooldown=1200; // ms between triggers
+let shakeListener=null;
+
+function toggleShake(){
+  if(!shakeEnabled){
+    // Request permission on iOS 13+
+    if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+      DeviceMotionEvent.requestPermission().then(state=>{
+        if(state==='granted'){enableShake();}
+        else{log('运动权限被拒绝','error');}
+      }).catch(e=>log('权限请求失败：'+e.message,'error'));
+    } else {
+      enableShake();
+    }
+  } else {
+    disableShake();
+  }
+}
+
+function enableShake(){
+  shakeEnabled=true;
+  document.getElementById('shake-track').classList.add('on');
+  document.getElementById('shake-toggle-label').textContent='开启';
+  document.getElementById('shake-toggle-label').style.color='var(--green)';
+
+  let eventCount=0;
+  shakeListener=e=>{
+    eventCount++;
+    // Show first event received to confirm sensor working
+    if(eventCount===1){
+      const shakeLog=document.getElementById('shake-log');
+      shakeLog.textContent='✅ 传感器正常，用力摇动！';
+      shakeLog.className='shake-log triggered';
+    }
+    onMotion(e);
+  };
+  window.addEventListener('devicemotion',shakeListener);
+
+  // Check after 2 seconds if we got any events
+  setTimeout(()=>{
+    if(eventCount===0){
+      document.getElementById('shake-log').textContent='❌ 未收到传感器数据，请检查浏览器权限';
+      document.getElementById('shake-log').className='shake-log error';
+      log('摇一摇：未收到 devicemotion 事件，可能需要授权','error');
+    }
+  },2000);
+
+  log('摇一摇已开启','ok');
+  document.getElementById('shake-log').textContent='等待传感器数据...';
+}
+
+function disableShake(){
+  shakeEnabled=false;
+  document.getElementById('shake-track').classList.remove('on');
+  document.getElementById('shake-toggle-label').textContent='关闭';
+  document.getElementById('shake-toggle-label').style.color='var(--dim)';
+  if(shakeListener)window.removeEventListener('devicemotion',shakeListener);
+  document.getElementById('shake-bar').style.height='0%';
+  document.getElementById('shake-log').textContent='等待摇动...';
+}
+
+function onMotion(e){
+  const acc=e.accelerationIncludingGravity;
+  if(!acc)return;
+
+  const dx=Math.abs(acc.x-(lastAcc.x||acc.x));
+  const dy=Math.abs(acc.y-(lastAcc.y||acc.y));
+  const dz=Math.abs(acc.z-(lastAcc.z||acc.z));
+  lastAcc={x:acc.x,y:acc.y,z:acc.z};
+
+  // Overall shake magnitude
+  const magnitude=Math.sqrt(dx*dx+dy*dy+dz*dz);
+
+  // Update visual bar (capped at 100%)
+  const pct=Math.min(magnitude*3,100);
+  document.getElementById('shake-bar').style.height=pct+'%';
+
+  // Sensitivity threshold
+  const threshold=parseInt(document.getElementById('shake-sensitivity').value)||15;
+  if(magnitude<threshold)return;
+
+  // Cooldown
+  const now=Date.now();
+  if(now-lastShakeTime<shakeCooldown)return;
+  lastShakeTime=now;
+
+  // Map intensity to effect strength (stronger shake = higher intensity)
+  const intensityScale=Math.min(magnitude/threshold,3); // 1x to 3x
+  triggerShakeEffect(magnitude,intensityScale,{dx,dy,dz});
+}
+
+async function triggerShakeEffect(magnitude,scale,delta){
+  if(getConnectedDevices().length===0)return;
+
+  const sel=document.getElementById('shake-effect-select').value;
+  const shakeLog=document.getElementById('shake-log');
+
+  let effectName=sel;
+  let effectObj;
+
+  if(sel==='fav'){
+    const favs=getFavs();
+    if(!favs.length){shakeLog.textContent='收藏夹为空';return;}
+    const pick=favs[Math.floor(Math.random()*favs.length)];
+    effectObj=JSON.parse(JSON.stringify(pick.effect));
+    effectName=pick.name;
+  } else {
+    effectObj=JSON.parse(JSON.stringify(EFFECTS[sel]));
+  }
+
+  // Scale all intensities based on shake magnitude
+  if(effectObj.tracks){
+    for(const t of effectObj.tracks){
+      t.start_intensity=Math.min(Math.round(t.start_intensity*scale),100);
+      t.end_intensity  =Math.min(Math.round(t.end_intensity  *scale),100);
+    }
+  }
+
+  const dir=delta.dx>delta.dy&&delta.dx>delta.dz?'←→':delta.dy>delta.dz?'↑↓':'前后';
+  const strength=scale<1.5?'轻':scale<2.2?'中':'强';
+
+  shakeLog.textContent=`${dir} ${strength}摇 · 强度×${scale.toFixed(1)} → ${effectName}`;
+  shakeLog.className='shake-log triggered';
+  setTimeout(()=>{shakeLog.className='shake-log';shakeLog.textContent='继续摇动...';},1000);
+
+  log(`📳 摇一摇 [幅度${magnitude.toFixed(1)} ×${scale.toFixed(1)}] → ${effectName}`,'ok');
+  await sendEffectObj(effectObj,effectName,null);
+}
+
+// Show shake panel when device connected
+function showShakePanel(){
+  document.getElementById('shake-panel').classList.add('show');
+}
 
 // Init
 buildBodyMap();
+buildMotorPicker();
+renderFavorites();
+renderDevices();
 </script>
 </body>
 </html>
