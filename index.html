@@ -594,15 +594,15 @@ async function connectDevice(entry){
     showShakePanel();
   }catch(err){
     entry.status='disconnected'; renderDevices();
+    clearDeviceQueue(entry.id);
     log('连接失败：'+entry.name+' — '+err.message,'error');
     setStatus('连接失败，请重试','error');
-    // ⚠ Do NOT auto-reconnect on first connection failure
-    // Only scheduleReconnect is called from onDeviceDisconnected (after successful connection)
   }
 }
 
 function onDeviceDisconnected(entry){
   entry.rxChar=null; entry.status='reconnecting';
+  clearDeviceQueue(entry.id); // clear any pending writes
   log('设备断开：'+entry.name,'warn');
   renderDevices(); updateConnSummary();
   if(getConnectedDevices().length===0){
@@ -718,19 +718,38 @@ async function drainQueue(deviceId){
   const q=writeQueues.get(deviceId);
   if(!q||q.running)return;
   q.running=true;
-  while(q.queue.length>0){
-    // Drop stale motor bursts (keep only latest if queue backed up)
-    if(q.queue.length>3)q.queue.splice(0,q.queue.length-1);
-    const{rxChar,data,resolve,reject}=q.queue.shift();
-    try{
-      for(let i=0;i<data.length;i+=128){
-        const chunk=data.slice(i,i+128);
-        await rxChar.writeValueWithoutResponse(chunk);
-        if(i+128<data.length)await delay(20);
+  try{
+    while(q.queue.length>0){
+      // Drop stale motor bursts if queue backed up (keep latest 1)
+      while(q.queue.length>2){
+        const dropped=q.queue.shift();
+        dropped.resolve(); // resolve so callers don't hang
       }
-      resolve();
-    }catch(e){reject(e);}
+      const{rxChar,data,resolve,reject}=q.queue.shift();
+      try{
+        for(let i=0;i<data.length;i+=128){
+          const chunk=data.slice(i,i+128);
+          await rxChar.writeValueWithoutResponse(chunk);
+          if(i+128<data.length)await delay(20);
+        }
+        resolve();
+      }catch(e){
+        resolve(); // resolve even on error so Promise chain doesn't hang
+      }
+    }
+  }finally{
+    q.running=false;
+    // If new items were added while we were running, drain again
+    if(q.queue.length>0)drainQueue(deviceId);
   }
+}
+
+function clearDeviceQueue(deviceId){
+  const q=writeQueues.get(deviceId);
+  if(!q)return;
+  // Resolve all pending so no hanging Promises
+  for(const item of q.queue)item.resolve();
+  q.queue=[];
   q.running=false;
 }
 
