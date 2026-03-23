@@ -1182,45 +1182,71 @@ function initPeer(){
 }
 
 function connectAsGuest(){
-  const code=document.getElementById('guest-code-input').value.trim();
+  const code=document.getElementById('guest-code-input').value.trim().toUpperCase();
   if(code.length<4){document.getElementById('guest-info').textContent='请输入完整房间码';return;}
-  if(!peer||peer.destroyed)peer=new Peer(undefined,{
-    debug:0,
-    config:{
-      iceServers:[
-        {urls:'stun:stun.l.google.com:19302'},
-        {urls:'stun:stun1.l.google.com:19302'}
-      ]
-    }
-  });
   document.getElementById('guest-info').textContent='连接中...';
   document.getElementById('btn-guest-connect').disabled=true;
-  const hostId='TG-'+code.toUpperCase();
-  guestConn=peer.connect(hostId,{reliable:true});
-  guestConn.on('open',()=>{
-    isGuest=true;
-    document.getElementById('guest-info').textContent='✅ 已连接主机，可以开始控制！';
-    document.getElementById('guest-info').style.color='var(--green)';
-    setRemoteStatus('访客模式·已连接');
-    log('🌐 已连接主机，远程控制模式开启','ok');
-    document.getElementById('btn-guest-connect').disabled=false;
-    // Enable all controls for guest (they send to host, not local BLE)
-    document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=false);
-    document.querySelectorAll('.effect-btn,.btn-send-loaded').forEach(b=>b.disabled=false);
-    document.getElementById('ed-btn-send').disabled=false;
-    buildBodyMap();
-  });
-  guestConn.on('close',()=>{
-    isGuest=false; guestConn=null;
-    document.getElementById('guest-info').textContent='连接已断开';
-    document.getElementById('guest-info').style.color='';
-    setRemoteStatus('未连接');
-    log('🌐 与主机的连接断开','warn');
-  });
-  guestConn.on('error',e=>{
-    document.getElementById('guest-info').textContent='连接失败：'+e.message;
-    document.getElementById('btn-guest-connect').disabled=false;
-  });
+
+  function doConnect(){
+    const hostId='TG-'+code;
+    if(!peer||peer.destroyed||peer.disconnected){
+      // Peer is not ready - reinit then connect
+      if(peer&&!peer.destroyed)peer.destroy();
+      peer=null;
+      const tmpPeer=new Peer(undefined,{
+        debug:0,
+        config:{iceServers:[
+          {urls:'stun:stun.l.google.com:19302'},
+          {urls:'stun:stun1.l.google.com:19302'}
+        ]}
+      });
+      tmpPeer.on('open',()=>{
+        peer=tmpPeer;
+        attemptConn(hostId);
+      });
+      tmpPeer.on('error',e=>{
+        document.getElementById('guest-info').textContent='服务器连接失败，请重试';
+        document.getElementById('btn-guest-connect').disabled=false;
+        log('联机错误：'+e.message,'error');
+      });
+    } else {
+      attemptConn(hostId);
+    }
+  }
+
+  function attemptConn(hostId){
+    guestConn=peer.connect(hostId,{reliable:true});
+    const timeout=setTimeout(()=>{
+      document.getElementById('guest-info').textContent='连接超时，请确认房间码正确';
+      document.getElementById('btn-guest-connect').disabled=false;
+    },10000);
+    guestConn.on('open',()=>{
+      clearTimeout(timeout);
+      isGuest=true;
+      document.getElementById('guest-info').textContent='✅ 已连接主机，可以开始控制！';
+      document.getElementById('guest-info').style.color='var(--green)';
+      setRemoteStatus('访客模式·已连接');
+      log('🌐 已连接主机，远程控制模式开启','ok');
+      document.getElementById('btn-guest-connect').disabled=false;
+      document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=false);
+      buildBodyMap();
+    });
+    guestConn.on('close',()=>{
+      clearTimeout(timeout);
+      isGuest=false; guestConn=null;
+      document.getElementById('guest-info').textContent='连接已断开';
+      document.getElementById('guest-info').style.color='';
+      setRemoteStatus('未连接');
+      log('🌐 与主机的连接断开','warn');
+    });
+    guestConn.on('error',e=>{
+      clearTimeout(timeout);
+      document.getElementById('guest-info').textContent='连接失败：'+e.message;
+      document.getElementById('btn-guest-connect').disabled=false;
+    });
+  }
+
+  doConnect();
 }
 
 // Guest sends effect data to host
