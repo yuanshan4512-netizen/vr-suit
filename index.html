@@ -472,7 +472,7 @@ function buildEffectBinary(eff){
 }
 
 function buildMotorPacket(idx,intensity){
-  const t={intensity_mode:'Const',start_time:0,end_time:200,start_intensity:intensity,end_intensity:intensity,index:[idx],once:false,interval:0};
+  const t={intensity_mode:'Const',start_time:0,end_time:180,start_intensity:intensity,end_intensity:intensity,index:[idx],once:false,interval:0};
   const sb=buildShakeBytes(t,false,0);
   return[0x68,0x68,1,...sb,0x16];
 }
@@ -522,7 +522,7 @@ async function connectDevice(entry){
     await sendRawTo(entry.rxChar,HANDSHAKE,entry.id);
     entry.status='connected'; entry.reconnectAttempts=0; entry.everConnected=true;
     if(!primaryDeviceId)primaryDeviceId=entry.id;
-    entry.device.addEventListener('gattserverdisconnected',()=>onDeviceDisconnected(entry),{once:true});
+    entry.device.addEventListener('gattserverdisconnected',()=>onDeviceDisconnected(entry));
     renderDevices(); updateConnSummary(); enableControls();
     log('✅ 已连接：'+entry.name,'ok');
     setStatus('已连接：'+entry.name,'ok');
@@ -530,7 +530,7 @@ async function connectDevice(entry){
     renderLoadedEffects(); renderFavorites();
   }catch(err){
     log('连接失败：'+entry.name+' '+err.message,'error');
-    // 首次连接失败不自动重连
+    scheduleReconnect(entry);
   }
 }
 
@@ -645,7 +645,7 @@ async function drainQueue(deviceId){
   q.running=true;
   while(q.queue.length>0){
     // Drop stale motor bursts (keep only latest if queue backed up)
-    if(q.queue.length>3)q.queue.splice(0,q.queue.length-1);
+    if(q.queue.length>2)q.queue.splice(0,q.queue.length-2);
     const{rxChar,data,resolve,reject}=q.queue.shift();
     try{
       for(let i=0;i<data.length;i+=128){
@@ -867,7 +867,7 @@ function attachTouchEvents(cv){
   },{passive:false});
   cv.addEventListener('touchmove',e=>{
     e.preventDefault();
-    const touch=e.touches[0];
+    const touch=e.touches[e.touches.length-1];
     const{x,y}=clientToCanvas(cv,touch.clientX,touch.clientY);
     const mIdx=canvasHitMotor(x,y);
     if(mIdx===null)return;
@@ -880,7 +880,7 @@ function attachTouchEvents(cv){
 function startTouchMotor(mIdx){
   if((!getConnectedDevices().length&&!isGuest)||activeMotors.has(mIdx))return;
   fireBurst(mIdx);
-  const id=setInterval(()=>fireBurst(mIdx),150);
+  const id=setInterval(()=>fireBurst(mIdx),100);
   activeMotors.set(mIdx,id);
   drawTouchGrid();
 }
